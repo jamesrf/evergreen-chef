@@ -1,0 +1,42 @@
+This is a set of Evergreen and OpenSRF cookbooks for use with Chef (http://www.opscode.com/chef), a Ruby-based configuration management tool.
+
+This package is beta quality.  It is not recommended for those who are not familiar with the OpenSRF/Evergreen installation process.
+
+These cookbooks can also be used with Vagrant, a tool which deploys VMs using VirtualBox (http://www.vagrantup.com)
+
+The Evergreen packages work ok with 1.6.1 but you may need to tweak the opensrf.xml templates.
+
+
+CHEF SOLO USAGE:
+
+1.  Follow the chef installation instructions: http://wiki.opscode.com/display/chef/Installation
+
+2.  Create a solo.rb config file: http://wiki.opscode.com/display/chef/Chef+Solo
+
+3.  Use dna.json.example as a starting point for the chef json config file 
+
+
+VAGRANT USAGE:
+
+1.  Install vagrant (http://www.vagrantup.com)
+
+    gem install vagrant
+
+2.  Download a base box, I have tested with the following:
+
+    vagrant box add lucid32 http://files.vagrantup.com/lucid32.box
+
+3.  Install git
+
+    ie: sudo apt-get install git-core
+
+4.  Clone the cookbook repo:
+
+    git clone git://github.com/jamesrf/evergreen-chef.git
+
+5.  Create a new vagrant instance using the 'vagrant init' command (see Vagrant help for more info)
+
+6.  Modify Vagrantfile.example to suit your needs and put it in your new vagrant instance
+
+7.  Run vagrant up to load and provision the VM
+

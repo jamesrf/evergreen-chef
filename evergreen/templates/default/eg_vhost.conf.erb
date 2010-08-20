@@ -1,0 +1,421 @@
+# ----------------------------------------------------------------------------------
+# This is the global Evergreen virtual host config.  Anything you want published
+# through all virtual hosts (port 80, port 443, etc.) should live in here.
+# ----------------------------------------------------------------------------------
+
+# ----------------------------------------------------------------------------------
+# Point / to the opac -- Craftsman is the new default. Swap lines for the old skin.
+# ----------------------------------------------------------------------------------
+# RedirectMatch 301 ^/$ /opac/en-US/skin/default/xml/index.xml
+RedirectMatch 301 ^/$ /opac/en-US/skin/craftsman/xml/index.xml
+
+# ----------------------------------------------------------------------------------
+# Assign a default locale to the accessible OPAC
+# ----------------------------------------------------------------------------------
+RedirectMatch 301 ^/opac/extras/slimpac/start.html$ /opac/en-US/extras/slimpac/start.html
+RedirectMatch 301 ^/opac/extras/slimpac/advanced.html$ /opac/en-US/extras/slimpac/advanced.html
+
+# ----------------------------------------------------------------------------------
+# Configure the gateway
+# ----------------------------------------------------------------------------------
+OSRFGatewayConfig /openils/conf/opensrf_core.xml
+# Translator memcache server.  Default is localhost
+# OSRFTranslatorCacheServer 127.0.0.1:11211
+
+
+# ----------------------------------------------------------------------------------
+# Added content plugin
+# ----------------------------------------------------------------------------------
+<Location /opac/extras/ac/>
+    SetHandler perl-script
+    PerlHandler OpenILS::WWW::AddedContent
+    Options +ExecCGI
+    PerlSendHeader On
+    allow from all
+</Location>
+
+# ----------------------------------------------------------------------------------
+# Replace broken cover images with a transparent GIF by default
+# ----------------------------------------------------------------------------------
+RewriteEngine ON
+RewriteRule ^/opac/extras/ac/jacket/(small|medium|large)/$ \
+    /opac/images/blank.png [P,L]
+
+# ----------------------------------------------------------------------------------
+# Add the row ID (RID) and date so we can make unAPI happy
+# ----------------------------------------------------------------------------------
+RewriteEngine ON
+RewriteCond %{QUERY_STRING} (^r|&r)=(\d+)
+RewriteRule - - [E=OILS_OPAC_RID:%2]
+RewriteRule - - [E=OILS_TIME_YEAR:%{TIME_YEAR}] [L]
+
+# ----------------------------------------------------------------------------------
+# Pull the locale from the URL
+# ----------------------------------------------------------------------------------
+RewriteEngine ON
+RewriteCond %{REQUEST_URI} ^/opac/(.*?)/
+RewriteRule - - [E=locale:%1] [L]
+
+# ----------------------------------------------------------------------------------
+# Configure the OPAC
+# ----------------------------------------------------------------------------------
+<LocationMatch /opac/>
+    AddType application/xhtml+xml .xml
+   
+    # - configure mod_xmlent
+    XMLEntStripPI "yes"
+    XMLEntEscapeScript "no"
+    XMLEntStripComments "yes"
+    XMLEntContentType "text/html; charset=utf-8"
+    # forces quirks mode which we want for now
+    XMLEntStripDoctype "yes" 
+
+    # - set up the include handlers
+    Options +Includes
+    AddOutputFilter INCLUDES .xsl
+    AddOutputFilter INCLUDES;XMLENT .xml
+		    
+    SetEnvIf Request_URI ".*" OILS_OPAC_BASE=/opac/
+    
+    # This gives you the option to configure a different host to serve OPAC images from
+    # Specify the hostname (without protocol) and path to the images.  Protocol will
+    # be determined at runtime
+    #SetEnvIf Request_URI ".*" OILS_OPAC_IMAGES_HOST=static.example.org/opac/
+
+    # In addition to loading images from a static host, you can also load CSS and/or
+    # Javascript from a static host or hosts. Protocol will be determined at runtime
+    # and/or by configuration options immediately following.
+    #SetEnvIf Request_URI ".*" OILS_OPAC_CSS_HOST=static.example.org/opac/
+    #SetEnvIf Request_URI ".*" OILS_OPAC_JS_HOST=static.example.org/opac/
+
+    # If you are not able to serve static content via https and 
+    # wish to force http:// (and are comfortable with mixed-content
+    # warnings in client browsers), set this:
+    #SetEnvIf Request_URI ".*" OILS_OPAC_STATIC_PROTOCOL=http
+
+    # If you would prefer to fall back to your non-static servers for 
+    # https pages, avoiding mixed-content warnings in client browsers
+    # and are willing to accept some increased server load, set this:
+    #SetEnvIf Request_URI ".*" OILS_OPAC_BYPASS_STATIC_FOR_HTTPS=yes
+
+</LocationMatch>
+
+
+# ----------------------------------------------------------------------------------
+# Force SSL on the OPAC's "My Account" page
+# ----------------------------------------------------------------------------------
+<LocationMatch .*/myopac.xml>
+    SSLRequireSSL
+</LocationMatch>
+
+<LocationMatch /opac/extras/>
+    # Force to en-US for now to satisfy bbags.xml
+    SetEnv locale en-US
+    Options +Includes
+    AddOutputFilter INCLUDES .xml
+    AddType application/xhtml+xml .xml
+</LocationMatch>
+
+RewriteEngine ON
+RewriteCond %{QUERY_STRING} locale=([^&]*)
+RewriteRule ^/opac/[a-z]{2}-[A-Z]{2}/extras/slimpac/(.*)$ /opac/%1/extras/slimpac/$1? [redirect]
+<LocationMatch /opac/[a-z]{2}-[A-Z]{2}/extras/slimpac/>
+    AddOutputFilter INCLUDES;XMLENT .html
+</LocationMatch>
+
+# ----------------------------------------------------------------------------------
+# Run server-side XUL and XHTML through xmlent to load the correct XML entities
+# ----------------------------------------------------------------------------------
+RewriteEngine ON
+RewriteCond %{HTTP:Accept-Language} ([a-z]{2}-[A-Z]{2})
+RewriteRule ^/xul/	-	[E=locale:%1]
+RewriteRule ^/reports/	- 	[E=locale:%1] [L]
+
+# Default to en-US if we haven't matched a locale of the form xx-YY 
+RewriteEngine ON
+RewriteCond %{HTTP:Accept-Language} !([a-z]{2}-[A-Z]{2})
+RewriteRule ^/xul/	-	[E=locale:en-US]
+RewriteRule ^/reports/	- 	[E=locale:en-US] [L]
+
+# Default to en-US if we are just given en
+RewriteEngine ON
+RewriteCond %{ENV:locale} ^$ [OR]
+RewriteCond %{ENV:locale} ^en$
+RewriteRule - - [E=locale:en-US] [L]
+
+<LocationMatch /xul/.*\.x?html$>
+    Options +Includes
+    XMLEntEscapeScript "no"
+    XMLEntStripComments "yes"
+    XMLEntStripPI "yes"
+    XMLEntStripDoctype "yes"
+    XMLEntContentType "text/html; charset=utf-8"
+    AddOutputFilter INCLUDES;XMLENT .xhtml
+    AddOutputFilter INCLUDES;XMLENT .html
+    allow from all
+</LocationMatch>
+
+
+<LocationMatch /xul/.*\.xul$>
+    Options +Includes
+    XMLEntContentType "application/vnd.mozilla.xul+xml"
+    AddOutputFilter INCLUDES;XMLENT .xul
+    allow from all
+</LocationMatch>
+
+
+# ----------------------------------------------------------------------------------
+# Supercat feeds
+# ----------------------------------------------------------------------------------
+<Location /opac/extras/oisbn>
+    SetHandler perl-script
+    PerlHandler OpenILS::WWW::SuperCat::oisbn
+    Options +ExecCGI
+    PerlSendHeader On
+    allow from all
+</Location>
+<Location /opac/extras/supercat>
+    SetHandler perl-script
+    PerlHandler OpenILS::WWW::SuperCat::supercat
+    Options +ExecCGI
+    PerlSendHeader On
+    allow from all
+</Location>
+<Location /opac/extras/unapi>
+    SetHandler perl-script
+    PerlHandler OpenILS::WWW::SuperCat::unapi
+    Options +ExecCGI
+    PerlSendHeader On
+    allow from all
+</Location>
+<Location /opac/extras/feed/bookbag>
+    SetHandler perl-script
+    PerlHandler OpenILS::WWW::SuperCat::bookbag_feed
+    Options +ExecCGI
+    PerlSendHeader On
+    allow from all
+</Location>
+<Location /opac/extras/opensearch>
+    SetHandler perl-script
+    PerlHandler OpenILS::WWW::SuperCat::opensearch_feed
+    Options +ExecCGI
+    PerlSendHeader On
+    allow from all
+</Location>
+<Location /opac/extras/sru>
+    SetHandler perl-script
+    PerlHandler OpenILS::WWW::SuperCat::sru_search
+    Options +ExecCGI
+    PerlSendHeader On
+    allow from all
+</Location>
+<Location /opac/extras/feed/freshmeat>
+    SetHandler perl-script
+    PerlHandler OpenILS::WWW::SuperCat::changes_feed
+    Options +ExecCGI
+    PerlSendHeader On
+    allow from all
+</Location>
+<Location /opac/extras/browse>
+    SetHandler perl-script
+    PerlHandler OpenILS::WWW::SuperCat::string_browse
+    Options +ExecCGI
+    PerlSendHeader On
+    allow from all
+</Location> 	
+	
+# ----------------------------------------------------------------------------------
+# Module for displaying OpenSRF API documentation
+# ----------------------------------------------------------------------------------
+<Location /opac/extras/docgen.xsl>
+    AddOutputFilter INCLUDES .xsl
+</Location>
+
+# ----------------------------------------------------------------------------------
+# Module for processing staff-client offline scripts lives here
+# ----------------------------------------------------------------------------------
+<Directory "/openils/var/cgi-bin/offline">
+    AddHandler cgi-script .pl
+    AllowOverride None
+    Options +ExecCGI
+    allow from all
+</Directory>
+	
+	
+# ----------------------------------------------------------------------------------
+# XXX Note, it's important to explicitly set the JSON encoding style 
+# (OSRFGatewayLegacyJSON), since the default encoding style will likely change 
+# with OpenSRF 1.0
+# ----------------------------------------------------------------------------------
+# OpenSRF JSON legacy gateway
+# ----------------------------------------------------------------------------------
+<Location /gateway>
+    SetHandler osrf_json_gateway_module
+    OSRFGatewayLegacyJSON "true"
+    allow from all
+</Location>
+# ----------------------------------------------------------------------------------
+# New-style OpenSRF JSON gateway
+# ----------------------------------------------------------------------------------
+<Location /osrf-gateway-v1>
+    SetHandler osrf_json_gateway_module
+    OSRFGatewayLegacyJSON "false"
+    allow from all
+</Location>
+
+# ----------------------------------------------------------------------------------
+# OpenSRF-over-HTTP translator
+# (http://open-ils.org/dokuwiki/doku.php?id=opensrf_over_http)
+# ----------------------------------------------------------------------------------
+<Location /osrf-http-translator>
+    SetHandler osrf_http_translator_module
+    allow from all
+</Location>
+
+# ----------------------------------------------------------------------------------
+# The exporter lives here
+# ----------------------------------------------------------------------------------
+<Location /exporter>
+    SetHandler perl-script
+    PerlSetVar OILSProxyTitle "Exporter Login"
+    PerlSetVar OILSProxyDescription "Please log in to export records"
+    PerlSetVar OILSProxyPermissions "STAFF_LOGIN"
+    PerlHandler OpenILS::WWW::Proxy OpenILS::WWW::Exporter
+    Options +ExecCGI
+    allow from all
+</Location>
+
+# ----------------------------------------------------------------------------------
+# Reporting output lives here
+# ----------------------------------------------------------------------------------
+<Location /reporter/>
+    SetHandler perl-script
+    PerlSetVar OILSProxyTitle "Report Login"
+    PerlSetVar OILSProxyDescription "Please log in to view this report"
+    PerlSetVar OILSProxyPermissions "VIEW_REPORT_OUTPUT"
+    PerlHandler OpenILS::WWW::Proxy
+    Options +ExecCGI
+    PerlSendHeader On
+    allow from all
+</Location>
+
+# ----------------------------------------------------------------------------------
+# Selfcheck interface
+# ----------------------------------------------------------------------------------
+<LocationMatch .*/selfcheck.xml>
+    SetHandler perl-script
+    PerlSetVar OILSProxyTitle "Selfcheck Login"
+    PerlSetVar OILSProxyDescription "Please log in to activate the selfcheck interface"
+    PerlSetVar OILSProxyPermissions "STAFF_LOGIN"
+    PerlHandler OpenILS::WWW::Proxy
+    Options +ExecCGI
+    PerlSendHeader On
+    allow from all
+</LocationMatch>
+
+
+# ----------------------------------------------------------------------------------
+# Reports GUI
+# ----------------------------------------------------------------------------------
+<LocationMatch /reports>
+    Options +Includes
+    AddOutputFilter INCLUDES;XMLENT .xhtml
+</LocationMatch>
+<LocationMatch /reports/fm_IDL.xml>
+    Options +Includes
+    XMLEntStripDoctype "yes"
+    XMLEntStripComments "no"
+    XMLEntContentType "text/xml; charset=utf-8"
+    AddOutputFilter INCLUDES;XMLENT .xml
+</LocationMatch>
+
+# ----------------------------------------------------------------------------------
+# XML-RPC gateway
+# ----------------------------------------------------------------------------------
+<Location /xml-rpc>
+    SetHandler perl-script
+    PerlHandler OpenILS::WWW::XMLRPCGateway
+    Options +ExecCGI
+    PerlSendHeader On
+    allow from all
+</Location>
+
+# ----------------------------------------------------------------------------------
+# Conify - next-generation Evergreen administration interface
+# ----------------------------------------------------------------------------------
+RewriteEngine on
+RewriteRule ^/conify/([a-z]{2}-[A-Z]{2})/global/(.*)$ /conify/global/$2 [E=locale:$1,L]
+<Location /conify>
+    XMLEntStripPI "yes"
+    XMLEntEscapeScript "no"
+    XMLEntStripComments "no"
+    XMLEntContentType "text/html; charset=utf-8"
+    AddOutputFilter INCLUDES;XMLENT .html
+ 
+    SetHandler perl-script
+    PerlSetVar OILSProxyTitle "Dojo Admin Login"
+    PerlSetVar OILSProxyDescription "Please log in to administer Evergreen"
+    PerlSetVar OILSProxyPermissions "STAFF_LOGIN"
+    PerlHandler OpenILS::WWW::Proxy
+    Options +ExecCGI
+    PerlSendHeader On
+    allow from all
+</Location>
+
+# ----------------------------------------------------------------------------------
+# Vandelay importers / exporters (your Web interface to bibliographic travel)
+# ----------------------------------------------------------------------------------
+RedirectMatch 301 ^/vandelay/vandelay.xml(.*)$ /vandelay/en-US/vandelay.xml$1
+
+RewriteEngine on
+RewriteRule ^/vandelay/([a-z]{2}-[A-Z]{2})/(.*)$ /vandelay/$2 [E=locale:$1]
+
+<LocationMatch /vandelay.*xml>
+    XMLEntStripPI "yes"
+    XMLEntEscapeScript "no"
+    XMLEntStripComments "yes"
+    XMLEntContentType "text/html; charset=utf-8"
+    XMLEntStripDoctype "yes"
+    AddOutputFilter INCLUDES;XMLENT .xml
+	SetHandler perl-script
+	PerlSetVar OILSProxyTitle "Vandelay Login"
+	PerlSetVar OILSProxyDescription "Please log in to import MARC records"
+	PerlSetVar OILSProxyPermissions "IMPORT_MARC"
+	PerlHandler OpenILS::WWW::Proxy
+	Options +ExecCGI
+	PerlSendHeader On
+	allow from all
+</LocationMatch>
+<Location /vandelay-upload>
+    SetHandler perl-script
+    PerlHandler OpenILS::WWW::Vandelay::spool_marc
+    Options +ExecCGI
+    allow from all
+</Location>
+
+# OpenURL 0.1 searching based on OpenSearch
+RewriteEngine on
+RewriteMap openurl prg:/openils/bin/openurl_map.pl
+RewriteCond %{QUERY_STRING} (^.*$)
+RewriteRule ^/openurl$ ${openurl:%1} [NE,PT]
+
+
+
+# General Evergreen web template processor
+<Location /eg>
+    SetHandler perl-script
+    PerlHandler OpenILS::WWW::EGWeb
+    Options +ExecCGI
+    PerlSendHeader On
+    allow from all
+</Location>
+# Note: the template processor will decline handling anything it does not
+# have an explicit configuration for, which means it will fall back to 
+# Apache to serve the file.  However, in the interest of speed, go ahead 
+# and tell Apache to avoid asking OpenILS::WWW::EGWeb for static content.
+# Add more exemptions as needed.
+<LocationMatch ^/eg/.*(\.js|\.css|\.html|\.xhtml|\.xml|\.jpg|\.png|\.gif)$>
+    SetHandler None
+</LocationMatch>
+
+

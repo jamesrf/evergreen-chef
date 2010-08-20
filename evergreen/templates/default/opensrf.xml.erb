@@ -1,0 +1,971 @@
+<?xml version='1.0'?>
+
+<!-- 
+Example opensrf config file for OpenILS
+vim:et:ts=4:sw=4:
+-->
+
+<opensrf version='0.0.3'>
+
+    <default>
+
+        <!-- unless otherwise overidden, use this locale -->
+        <default_locale>en-US</default_locale>
+
+        <dirs>
+            <log><%= @node[:evergreen][:localstatedir] %>/log</log> <!-- unix::server log files -->
+            <sock><%= @node[:evergreen][:localstatedir] %>/lock</sock> <!-- unix::server sock files -->
+            <pid><%= @node[:evergreen][:localstatedir] %>/run</pid>
+            <xsl><%= @node[:evergreen][:localstatedir] %>/xsl</xsl>
+            <script><%= @node[:evergreen][:localstatedir] %></script>
+            <script_lib><%= @node[:evergreen][:localstatedir] %></script_lib>
+        </dirs>
+
+        <!-- global data visibility settings -->
+        <share>
+            <user>
+                <!-- Set to "true" to require patron opt-in for foreign (non-home_ou) transactions -->
+                <opt_in>false</opt_in>
+            </user>
+        </share>
+
+        <IDL><%= @node[:evergreen][:sysconfdir] %>/fm_IDL.xml</IDL> <!-- top level IDL file -->
+
+        <server_type>prefork</server_type> <!-- net::server type -->
+
+        <ils_events><%= @node[:evergreen][:localstatedir] %>/data/ils_events.xml</ils_events> <!-- ILS events description file -->
+
+        <email_notify> <!-- this will eventually move into the notifications section below... -->
+            <!-- global email notification settings -->
+            <template><%= @node[:evergreen][:localstatedir] %>/data/hold_notification_template.example</template>
+            <smtp_server>localhost</smtp_server>
+
+            <!--
+            in most cases, this is overridden by location 
+            specific config settings.  this is just the default
+            -->
+            <sender_address>evergreen@localhost</sender_address>
+        </email_notify>
+
+
+      <notifications>
+        <!-- global mail server settings -->
+        <smtp_server>localhost</smtp_server>
+        <sender_address>evergreen@localhost</sender_address>
+
+        <!-- Overdue notices -->
+        <overdue>
+
+            <!-- optionally, you can define a sender address per notice type -->
+            <sender_address>overdue@localhost</sender_address>
+
+            <!-- The system can generate an XML file of overdue notices.  This is the
+                directory where they are stored.  Files are named overdue.YYYY-MM-DD.xml -->
+            <notice_dir><%= @node[:evergreen][:localstatedir] %>/data/overdue</notice_dir>
+            <combined_template><%= @node[:evergreen][:localstatedir] %>/data/templates/overdue_combined_xml.example</combined_template>
+
+            <notice>
+                <!-- Notify at 7 days overdue -->
+                <notify_interval>7 days</notify_interval>
+                <!-- Options include always, noemail, and never.  'noemail' means a notice
+                     will be appended to the notice file only if the patron has no valid email address.  -->
+                <file_append>noemail</file_append>
+                <!-- do we attempt email notification? -->
+                <email_notify>true</email_notify>
+                <!-- notice template file -->
+                <email_template><%= @node[:evergreen][:localstatedir] %>/data/templates/overdue_7day.example</email_template>
+            </notice>
+        </overdue>
+
+        <!-- Courtesy notices -->
+        <predue>
+            <notice>
+                <!-- All circulations that circulate between 5 and 13 days -->
+                <circ_duration_range>
+                    <from>5 days</from>
+                    <to>13 days</to>
+                </circ_duration_range>
+                <!-- notify at 1 day before the due date -->
+                <notify_interval>1 day</notify_interval>
+                <file_append>false</file_append>
+                <email_notify>true</email_notify>
+                <email_template><%= @node[:evergreen][:localstatedir] %>/data/templates/predue_1day.example</email_template>
+            </notice>
+        </predue>
+      </notifications>
+
+        <reporter>
+            <!--
+            Settings for the reporter daemon process 
+            -->
+            <setup>
+                <base_uri>https://localhost/reporter/</base_uri>
+                <database>
+                    <driver>Pg</driver>
+                    <host><%= @node[:evergreen][:dbhost] %></host>
+                    <port><%= @node[:evergreen][:dbport] %></port>
+                    <db><%= @node[:evergreen][:dbname] %></db>
+                    <user><%= @node[:evergreen][:dbuser] %></user>
+                    <pw><%= @node[:evergreen][:dbpw] %></pw>
+                </database>
+                <state_store>
+                    <driver>Pg</driver>
+                    <host><%= @node[:evergreen][:dbhost] %></host>
+                    <port><%= @node[:evergreen][:dbport] %></port>
+                    <db><%= @node[:evergreen][:dbname] %></db>
+                    <user><%= @node[:evergreen][:dbuser] %></user>
+                    <pw><%= @node[:evergreen][:dbpw] %></pw>
+                </state_store>
+                <files>
+                    <!-- successful report outputs go here -->
+                    <output_base><%= @node[:evergreen][:localstatedir] %>/web/reporter</output_base>
+                    <success_template><%= @node[:evergreen][:localstatedir] %>/data/report-success</success_template>
+                    <fail_template><%= @node[:evergreen][:localstatedir] %>/data/report-fail</fail_template>
+                </files>
+            </setup>
+        </reporter>
+
+
+
+        <xml-rpc>
+            <!-- XML-RPC gateway.  Do NOT publish unprotected services here -->
+            <allowed_services>
+                <!-- list of published services -->
+                <service>opensrf.math</service>
+                <service>opensrf.dbmath</service>
+                <service>open-ils.cat</service>
+                <service>open-ils.search</service>
+                <service>open-ils.circ</service>
+                <service>open-ils.actor</service>
+                <service>open-ils.auth</service>
+                <service>open-ils.collections</service>
+            </allowed_services>
+        </xml-rpc>
+
+
+        <z3950>
+            <default>biblios</default>
+            <services>
+                <biblios>
+                    <!-- biblios does not require username/password -->
+                    <name>‡biblios.net</name>
+                    <host>z3950.biblios.net</host>
+                    <port>210</port>
+                    <db>bibliographic</db>
+                    <!-- fetch the full record with no holdings. FI is the most common choice -->
+                    <record_format>FI</record_format> 
+
+                    <!-- Record transmission format from the server.  Supported -->
+                    <!-- formats include usmarc and xml (for marcxml).         -->
+                    <transmission_format>usmarc</transmission_format> 
+
+                    <attrs>
+                        <tcn><code>12</code><format>1</format></tcn>
+                        <isbn><code>7</code><format>6</format></isbn>
+                        <lccn><code>9</code><format>1</format></lccn>
+                        <author><code>1003</code><format>6</format></author>
+                        <title><code>4</code><format>6</format></title>
+                        <issn><code>8</code><format>1</format></issn>
+                        <publisher><code>1018</code><format>6</format></publisher>
+                        <pubdate><code>31</code><format>1</format></pubdate>
+                        <item_type><code>1001</code><format>1</format></item_type>
+                    </attrs>
+                </biblios>
+
+                <loc>
+                    <!-- LoC does not require username/password -->
+                    <name>loc</name>
+                    <host>z3950.loc.gov</host>
+                    <port>7090</port>
+                    <db>Voyager</db>
+                    <!-- fetch the full record with no holdings. FI is the most common choice -->
+                    <record_format>FI</record_format> 
+
+                    <!-- Record transmission format from the server.  Supported -->
+                    <!-- formats include usmarc and xml (for marcxml).         -->
+                    <transmission_format>usmarc</transmission_format> 
+
+                    <attrs>
+                        <tcn><code>12</code><format>1</format></tcn>
+                        <isbn><code>7</code><format>6</format></isbn>
+                        <lccn><code>9</code><format>1</format></lccn>
+                        <author><code>1003</code><format>6</format></author>
+                        <title><code>4</code><format>6</format></title>
+                        <issn><code>8</code><format>1</format></issn>
+                        <publisher><code>1018</code><format>6</format></publisher>
+                        <pubdate><code>31</code><format>1</format></pubdate>
+                        <item_type><code>1001</code><format>1</format></item_type>
+                    </attrs>
+                </loc>
+
+                <oclc>
+                    <!-- Z3950 settings for OCLC.  Note that OCLC requires username/password -->
+                    <host>zcat.oclc.org</host>
+                    <port>210</port>
+                    <db>OLUCWorldCat</db>
+                    <attrs>
+                        <!--
+                        These are directly from the Bib-1 Attribute Set
+                        http://www.loc.gov/z3950/agency/defns/bib1.html
+                        <code> is the "use attribute", <format> is the "structure attribute"
+                        This just puts some friendly names on the data.
+                        -->
+                        <tcn><code>12</code><format>1</format></tcn>
+                        <isbn><code>7</code><format>6</format></isbn>
+                        <lccn><code>9</code><format>1</format></lccn>
+                        <author><code>1003</code><format>6</format></author>
+                        <title><code>4</code><format>6</format></title>
+                        <issn><code>8</code><format>1</format></issn>
+                        <publisher><code>1018</code><format>6</format></publisher>
+                        <pubdate><code>31</code><format>1</format></pubdate>
+                        <item_type><code>1001</code><format>1</format></item_type>
+                    </attrs>
+                </oclc>
+
+            </services>
+        </z3950>
+
+
+        <added_content>
+
+            <!-- XXX If you use the Amazon plugin, you must link back to Amazon in the OPAC -->
+
+            <!-- load the Amazon added content module -->
+            <module>OpenILS::WWW::AddedContent::Amazon</module>
+            <!--
+            Base URL for Amazon added content fetching.  This URL may
+            need to be shortened when new (read: non-image) content 
+            fetching capabilities are added
+            -->
+            <base_url>http://images.amazon.com/images/P/</base_url>
+
+            <!--
+            Max number of seconds to wait for an added content request to 
+            return data.  Data not returned within the timeout is considered
+            a failure
+            -->
+            <timeout>1</timeout>
+
+            <!--
+            After added content lookups have been disabled due to too many
+            lookup failures, this is the amount of time to wait before
+            we try again
+            -->
+            <retry_timeout>600</retry_timeout>
+
+            <!--
+            maximum number of consecutive lookup errors a given process can 
+            have before added content lookups are disabled for everyone
+            -->
+            <max_errors>15</max_errors>
+
+            <!-- If a userid is required to access the added content.. -->
+            <userid>MY_USER_ID</userid>
+
+            <!--
+            You can add free-form settings here and they will be accessible
+            within the added content module
+            -->
+
+        </added_content>
+
+
+
+        <!-- no apps are enabled globally by default -->
+        <activeapps/> 
+
+        <cache>
+            <!-- memcache servers -->
+            <global>
+                <servers>
+                    <server>localhost:11211</server>
+                </servers>
+                <max_cache_time>86400</max_cache_time>
+            </global>
+        </cache>
+
+        <apps>
+            <!-- Acquisitions server -->
+            <open-ils.acq>
+                <keepalive>5</keepalive>
+                <stateless>1</stateless>
+                <language>perl</language>
+                <implementation>OpenILS::Application::Acq</implementation>
+                <max_requests>100</max_requests>
+                <unix_config>
+                    <unix_sock>open-ils.acq_unix.sock</unix_sock>
+                    <unix_pid>open-ils.acq_unix.pid</unix_pid>
+                    <unix_log>open-ils.acq_unix.log</unix_log>
+                    <max_requests>100</max_requests>
+                    <min_children>1</min_children>
+                    <max_children>15</max_children>
+                    <min_spare_children>1</min_spare_children>
+                    <max_spare_children>5</max_spare_children>
+                </unix_config>
+            </open-ils.acq>
+
+            <!-- Authentication server -->
+            <open-ils.auth>
+
+                <!-- how long to wait between stateful requests before the child process re-joins the pool -->
+                <keepalive>5</keepalive>
+
+                <!-- true if this service support stateless requests -->
+                <stateless>1</stateless>
+
+                <!-- implementation language -->
+                <language>c</language>
+
+                <!-- library to plugin -->
+                <implementation>oils_auth.so</implementation>
+
+                <!-- maximum required opensrf requests within a stateful connection -->
+                <max_requests>93</max_requests>
+
+                <unix_config>
+                    <!--
+                    maximum number of top level requests coming to 
+                    this child before the child is recycled
+                    -->
+                    <max_requests>1000</max_requests>
+                    <!-- min children to fork -->
+                    <min_children>1</min_children>
+                    <!-- max possible children to fork -->
+                    <max_children>15</max_children>
+
+                    <!--
+                    C forking implementation does not support 
+                    min/max idle children, but may in the future
+                    -->
+
+                    <!-- min idle children -->
+                    <min_spare_children>1</min_spare_children>
+                    <!-- max idle children -->
+                    <max_spare_children>5</max_spare_children>
+
+                </unix_config>
+
+                <app_settings>
+                    <!-- defined app-specific settings here -->
+                    <default_timeout>
+                        <!-- default login timeouts based on login type -->
+                        <opac>420</opac>
+                        <staff>7200</staff>
+                        <temp>300</temp>
+                    </default_timeout>
+                </app_settings>
+            </open-ils.auth>
+
+
+            <!-- Generic search server -->
+            <open-ils.search>
+                <keepalive>5</keepalive>
+                <stateless>1</stateless>
+                <language>perl</language>
+                <implementation>OpenILS::Application::Search</implementation>
+                <max_requests>93</max_requests>
+                <unix_config>
+
+                    <!-- the following 3 settings are currently used by Perl services only -->
+                    <unix_sock>open-ils.search_unix.sock</unix_sock>
+                    <unix_pid>open-ils.search_unix.pid</unix_pid>
+                    <unix_log>open-ils.search_unix.log</unix_log>
+
+                    <max_requests>1000</max_requests>
+                    <min_children>1</min_children>
+                    <max_children>15</max_children>
+                    <min_spare_children>1</min_spare_children>
+                    <max_spare_children>5</max_spare_children>
+                </unix_config>
+                <app_settings>
+                    <marc_html_xsl>oilsMARC21slim2HTML.xsl</marc_html_xsl>
+                    <marc_html_xsl_slim>oilsMARC21slim2HTMLslim.xsl</marc_html_xsl_slim>
+
+                    <!-- Default to using staged search -->
+                    <use_staged_search>true</use_staged_search>
+
+                    <!--
+                        For staged search, we estimate hits based on inclusion or exclusion.
+
+                        Valid settings:
+                            inclusion - visible ratio on superpage
+                            exclusion - excluded ratio on superpage
+                            delete_adjusted_inclusion - included ratio on superpage, ratio adjusted by deleted count
+                            delete_adjusted_exclusion - excluded ratio on superpage, ratio adjusted by deleted count
+
+                        Under normal circumstances, inclusion is the best strategy, and both delete_adjusted variants
+                        will return the same value +/- 1.  The exclusion strategy is the original, and works well
+                        when there are few deleted or excluded records, in other words, when the superpage is not
+                        sparsely populated with visible records.
+                    -->
+                    <estimation_strategy>inclusion</estimation_strategy>
+
+                    <!-- Baseline number of records to check for hit estimation. -->
+                    <superpage_size>1000</superpage_size>
+
+                    <!-- How many superpages to consider for searching overall. -->
+                    <max_superpages>10</max_superpages>
+
+                    <!-- zip code database file -->
+                    <!--<zips_file>#{node[:opensrf][:localstatedir]}/data/zips.txt</zips_file>-->
+                </app_settings>
+            </open-ils.search>
+
+            <!-- server for accessing user info -->
+            <open-ils.actor>
+                <keepalive>5</keepalive>
+                <stateless>1</stateless>
+                <language>perl</language>
+                <implementation>OpenILS::Application::Actor</implementation>
+                <max_requests>93</max_requests>
+                <unix_config>
+                    <unix_sock>open-ils.actor_unix.sock</unix_sock>
+                    <unix_pid>open-ils.actor_unix.pid</unix_pid>
+                    <max_requests>1000</max_requests>
+                    <unix_log>open-ils.actor_unix.log</unix_log>
+                    <min_children>1</min_children>
+                    <max_children>15</max_children>
+                    <min_spare_children>1</min_spare_children>
+                    <max_spare_children>5</max_spare_children>
+                </unix_config>
+            </open-ils.actor>
+
+
+            <open-ils.cat>
+                <keepalive>5</keepalive>
+                <stateless>1</stateless>
+                <language>perl</language>
+                <implementation>OpenILS::Application::Cat</implementation>
+                <max_requests>199</max_requests>
+                <unix_config>
+                    <unix_sock>open-ils.cat_unix.sock</unix_sock>
+                    <unix_pid>open-ils.cat_unix.pid</unix_pid>
+                    <max_requests>1000</max_requests>
+                    <unix_log>open-ils.cat_unix.log</unix_log>
+                    <min_children>1</min_children>
+                    <max_children>15</max_children>
+                    <min_spare_children>1</min_spare_children>
+                    <max_spare_children>5</max_spare_children>
+                </unix_config>
+                <app_settings>
+                    <marctemplates>
+                        <K_book><%= @node[:evergreen][:localstatedir] %>/templates/marc/k_book.xml</K_book>
+                    </marctemplates>
+                </app_settings>
+            </open-ils.cat>
+
+            <open-ils.supercat>
+                <keepalive>5</keepalive>
+                <stateless>1</stateless>
+                <language>perl</language>
+                <implementation>OpenILS::Application::SuperCat</implementation>
+                <max_requests>199</max_requests>
+                <unix_config>
+                    <unix_sock>open-ils.supercat_unix.sock</unix_sock>
+                    <unix_pid>open-ils.supercat_unix.pid</unix_pid>
+                    <max_requests>1000</max_requests>
+                    <unix_log>open-ils.supercat_unix.log</unix_log>
+                    <min_children>1</min_children>
+                    <max_children>15</max_children>
+                    <min_spare_children>1</min_spare_children>
+                    <max_spare_children>5</max_spare_children>
+                </unix_config>
+            </open-ils.supercat>
+
+            <!-- server for accessing user info -->
+            <open-ils.trigger>
+                <keepalive>5</keepalive>
+                <stateless>1</stateless>
+                <language>perl</language>
+                <implementation>OpenILS::Application::Trigger</implementation>
+                <max_requests>93</max_requests>
+                <unix_config>
+                    <unix_sock>open-ils.trigger_unix.sock</unix_sock>
+                    <unix_pid>open-ils.trigger_unix.pid</unix_pid>
+                    <max_requests>1000</max_requests>
+                    <unix_log>open-ils.trigger_unix.log</unix_log>
+                    <min_children>1</min_children>
+                    <max_children>15</max_children>
+                    <min_spare_children>1</min_spare_children>
+                    <max_spare_children>5</max_spare_children>
+                </unix_config>
+            </open-ils.trigger>
+
+            <opensrf.math>
+                <keepalive>3</keepalive>
+                <stateless>1</stateless>
+                <language>c</language>
+                <implementation>osrf_math.so</implementation>
+                <max_requests>97</max_requests>
+                <unix_config>
+                    <unix_sock>opensrf.math_unix.sock</unix_sock>
+                    <unix_pid>opensrf.math_unix.pid</unix_pid>
+                    <max_requests>1000</max_requests>
+                    <unix_log>opensrf.math_unix.log</unix_log>
+                    <min_children>1</min_children>
+                    <max_children>15</max_children>
+                    <min_spare_children>1</min_spare_children>
+                    <max_spare_children>5</max_spare_children>
+                </unix_config>
+            </opensrf.math>
+
+            <opensrf.dbmath> 
+                <keepalive>3</keepalive>
+                <stateless>1</stateless>
+                <language>c</language>
+                <implementation>osrf_dbmath.so</implementation>
+                <max_requests>99</max_requests>
+                <unix_config>
+                    <max_requests>1000</max_requests>
+                    <unix_log>opensrf.dbmath_unix.log</unix_log>
+                    <unix_sock>opensrf.dbmath_unix.sock</unix_sock>
+                    <unix_pid>opensrf.dbmath_unix.pid</unix_pid>
+                    <min_children>1</min_children>
+                    <max_children>15</max_children>
+                    <min_spare_children>1</min_spare_children> 
+                    <max_spare_children>5</max_spare_children>
+                </unix_config>
+            </opensrf.dbmath>
+
+            <open-ils.penalty>
+                <keepalive>3</keepalive>
+                <stateless>1</stateless>
+                <language>perl</language>
+                <implementation>OpenILS::Application::Penalty</implementation>
+                <max_requests>99</max_requests>
+                <unix_config>
+                    <max_requests>1000</max_requests>
+                    <unix_log>open-ils.penalty_unix.log</unix_log>
+                    <unix_sock>open-ils.penalty_unix.sock</unix_sock>
+                    <unix_pid>open-ils.penalty_unix.pid</unix_pid>
+                    <min_children>1</min_children>
+                    <max_children>15</max_children>
+                    <min_spare_children>1</min_spare_children>
+                    <max_spare_children>5</max_spare_children>
+                </unix_config>
+                <app_settings>
+                    <patron_penalty>penalty/patron_penalty.js</patron_penalty>
+                    <script_path><%= @node[:evergreen][:libdir] %>/javascript</script_path>
+                    <script_path><%= @node[:evergreen][:localstatedir] %></script_path>
+                    <script_path><%= @node[:evergreen][:localstatedir] %>/catalog</script_path>
+                </app_settings>
+            </open-ils.penalty>
+
+            <open-ils.circ> 
+                <keepalive>3</keepalive>
+                <stateless>1</stateless>
+                <language>perl</language>
+                <implementation>OpenILS::Application::Circ</implementation>
+                <max_requests>99</max_requests>
+                <unix_config>
+                    <max_requests>1000</max_requests>
+                    <unix_log>open-ils.circ_unix.log</unix_log>
+                    <unix_sock>open-ils.circ_unix.sock</unix_sock>
+                    <unix_pid>open-ils.circ_unix.pid</unix_pid>
+                    <min_children>1</min_children>
+                    <max_children>15</max_children>
+                    <min_spare_children>1</min_spare_children> 
+                    <max_spare_children>5</max_spare_children>
+                </unix_config>
+                <app_settings>
+                    <notify_hold>
+                        <email>true</email> <!-- set to false to disable hold notice emails -->
+                    </notify_hold>
+
+                    <!-- circulation policy scripts -->
+                    <script_path><%= @node[:evergreen][:libdir] %>/javascript</script_path>
+                    <script_path><%= @node[:evergreen][:localstatedir] %></script_path>
+                    <script_path><%= @node[:evergreen][:localstatedir] %>/catalog</script_path>
+                    <legacy_script_support>false</legacy_script_support>
+                    <scripts> 
+                        <circ_permit_patron>circ/circ_permit_patron.js</circ_permit_patron>
+                        <circ_permit_copy>circ/circ_permit_copy.js</circ_permit_copy>
+                        <circ_duration>circ/circ_duration.js</circ_duration>
+                        <circ_recurring_fines>circ/circ_recurring_fines.js</circ_recurring_fines>
+                        <circ_max_fines>circ/circ_max_fines.js</circ_max_fines>
+                        <circ_permit_renew>circ/circ_permit_renew.js</circ_permit_renew>
+                        <circ_permit_hold>circ/circ_permit_hold.js</circ_permit_hold>
+                    </scripts>               
+
+                    <circ_modifiers>
+                        <mod>art</mod>
+                        <mod>atlas</mod>
+                        <mod>audiobook</mod>
+                        <mod>av</mod>
+                        <mod>new-av</mod>
+                        <mod>bestseller</mod>
+                        <mod>bestsellernh</mod>
+                        <mod>book</mod>
+                        <mod>cd</mod>
+                        <mod>dvd</mod>
+                        <mod>dvd-long</mod>
+                        <mod>e-book</mod>
+                        <mod>equipment</mod>
+                        <mod>filmstrip</mod>
+                        <mod>kit</mod>
+                        <mod>magazine</mod>
+                        <mod>map</mod>
+                        <mod>microform</mod>
+                        <mod>music</mod>
+                        <mod>record</mod>
+                        <mod>software</mod>
+                        <mod>softwrlong</mod>
+                        <mod>equip-long</mod>
+                        <mod>talking book</mod>
+                        <mod>toy</mod>
+                        <mod>video</mod>
+                        <mod>video-long</mod>
+                    </circ_modifiers>
+
+                    <billing_types>
+                        <type>Miscellaneous</type>
+                        <type>Overdue materials</type>
+                        <type>Fee for placing a hold</type>
+                        <type>Fee for checking out a book</type>
+                        <type>Fee for library card</type>
+                        <type>Miscellaneous charges</type>
+                        <type>Lost materials</type>
+                        <type>Damaged material</type>
+                        <type>Overdue Reserves charge</type>
+                        <type>Recall overdue</type>
+                        <type>Fee for processing lost library materials</type>
+                        <type>Fee for sending patron bills to collection agency</type>
+                        <type>Fee for interlibrary loan</type>
+                        <type>Fee for copies</type>
+                        <type>Money advanced to pay for telephone use</type>
+                        <type>Deposit fee</type>
+                        <type>Fee for disk</type>
+                        <type>Fee for faxing</type>
+                        <type>Fee for laminating</type>
+                        <type>Fee for room cleaning</type>
+                        <type>Deposit returned; fee refund</type>
+                        <type>Sale items</type>
+                        <type>Fee for lost card</type>
+                        <type>Long overdue items</type>
+                        <type>Lost/Replacement Cassette</type>
+                        <type>Returned Check</type>
+                    </billing_types>
+                </app_settings>
+            </open-ils.circ>
+
+            <open-ils.ingest>
+                <keepalive>3</keepalive>
+                <stateless>1</stateless>
+                <implementation>OpenILS::Application::Ingest</implementation>
+                <language>perl</language>
+                <max_requests>1000000</max_requests>
+                <unix_config>
+                    <max_requests>1000000</max_requests>
+                    <unix_log>open-ils.ingest-unix.log</unix_log>
+                    <unix_sock>open-ils.ingest-unix.sock</unix_sock>
+                    <unix_pid>open-ils.ingest-unix.pid</unix_pid>
+                    <min_children>5</min_children>
+                    <max_children>20</max_children>
+                    <min_spare_children>2</min_spare_children>
+                    <max_spare_children>5</max_spare_children>
+                </unix_config>
+                <app_settings>
+                    <script_path><%= @node[:evergreen][:libdir] %>/javascript/</script_path>
+                    <script_path><%= @node[:evergreen][:localstatedir] %>/catalog/</script_path>
+                    <script_path><%= @node[:evergreen][:localstatedir] %>/web/opac/common/js/</script_path>
+                    <scripts>
+                        <biblio_fingerprint>biblio_fingerprint.js</biblio_fingerprint>
+                        <biblio_descriptor>biblio_descriptor.js</biblio_descriptor>
+                    </scripts>
+                </app_settings>
+            </open-ils.ingest>
+
+            <open-ils.storage>
+                <keepalive>10</keepalive>
+                <stateless>1</stateless>
+                <language>perl</language>
+                <implementation>OpenILS::Application::Storage</implementation>
+                <unix_config>
+                    <max_requests>1000</max_requests>
+                    <unix_log>open-ils.storage_unix.log</unix_log>
+                    <unix_sock>open-ils.storage_unix.sock</unix_sock>
+                    <unix_pid>open-ils.storage_unix.pid</unix_pid>
+                    <min_children>1</min_children>
+                    <max_children>10</max_children>
+                    <min_spare_children>1</min_spare_children>
+                    <max_spare_children>5</max_spare_children>
+                </unix_config>
+                <app_settings>
+                    <script_path><%= @node[:evergreen][:libdir] %>/javascript/</script_path>
+                    <script_path><%= @node[:evergreen][:localstatedir] %>/catalog/</script_path>
+                    <scripts>
+                        <biblio_fingerprint>biblio_fingerprint.js</biblio_fingerprint>
+                    </scripts>
+                    <databases>
+                        <driver>Pg</driver>
+                        <database>
+                            <type>master</type>
+                            <weight>2</weight>
+                            <host><%= @node[:evergreen][:dbhost] %></host>
+                            <port><%= @node[:evergreen][:dbport] %></port>
+                            <db><%= @node[:evergreen][:dbname] %></db>
+                            <user><%= @node[:evergreen][:dbuser] %></user>
+                            <pw><%= @node[:evergreen][:dbpw] %></pw>
+                            <client_encoding>UTF-8</client_encoding>
+                        </database>
+                    </databases>
+                </app_settings>
+            </open-ils.storage>
+
+
+            <open-ils.cstore>
+                <keepalive>6</keepalive>
+                <stateless>1</stateless>
+                <language>C</language>
+                <implementation>oils_cstore.so</implementation>
+                <max_requests>200</max_requests>
+                <unix_config>
+                    <max_requests>1000</max_requests>
+                    <min_children>1</min_children>
+                    <max_children>15</max_children>
+                    <min_spare_children>1</min_spare_children>
+                    <max_spare_children>5</max_spare_children>
+                </unix_config>
+                <app_settings>
+                    <max_query_recursion>100</max_query_recursion>
+                    <driver>pgsql</driver>
+                    <database>
+                        <type>master</type>
+                        <weight>2</weight>
+                        <host><%= @node[:evergreen][:dbhost] %></host>
+                        <port><%= @node[:evergreen][:dbport] %></port>
+                        <db><%= @node[:evergreen][:dbname] %></db>
+                        <user><%= @node[:evergreen][:dbuser] %></user>
+                        <pw><%= @node[:evergreen][:dbpw] %></pw>
+                        <client_encoding>UTF-8</client_encoding>
+                    </database>
+                </app_settings>
+            </open-ils.cstore>
+
+
+            <open-ils.pcrud>
+                <keepalive>6</keepalive>
+                <migratable>1</migratable>
+                <stateless>1</stateless>
+                <language>C</language>
+                <implementation>oils_pcrud.so</implementation>
+                <max_requests>200</max_requests>
+
+                <unix_config>
+                    <unix_log>open-ils.pcrud.log</unix_log>
+                    <unix_sock>open-ils.pcrud.sock</unix_sock>
+                    <unix_pid>open-ils.pcrud.pid</unix_pid>
+                    <max_requests>1000</max_requests>
+                    <min_children>1</min_children>
+                    <max_children>15</max_children>
+                    <min_spare_children>1</min_spare_children>
+                    <max_spare_children>5</max_spare_children>
+                </unix_config>
+
+                <app_settings>
+                    <IDL><%= @node[:evergreen][:sysconfdir] %>/fm_IDL.xml</IDL>
+                    <driver>pgsql</driver>
+                    <database>
+                        <type>master</type>
+                        <weight>2</weight>
+                        <host><%= @node[:evergreen][:dbhost] %></host>
+                        <port><%= @node[:evergreen][:dbport] %></port>
+                        <db><%= @node[:evergreen][:dbname] %></db>
+                        <user><%= @node[:evergreen][:dbuser] %></user>
+                        <pw><%= @node[:evergreen][:dbpw] %></pw>
+                        <client_encoding>UTF-8</client_encoding>
+                    </database>
+                </app_settings>
+            </open-ils.pcrud>
+
+
+            <opensrf.settings>
+                <keepalive>1</keepalive>
+                <stateless>1</stateless>
+                <language>perl</language>
+                <implementation>OpenSRF::Application::Settings</implementation>
+                <max_requests>17</max_requests>
+                <unix_config>
+                    <unix_sock>opensrf.settings_unix.sock</unix_sock>
+                    <unix_pid>opensrf.settings_unix.pid</unix_pid>
+                    <max_requests>300</max_requests>
+                    <unix_log>opensrf.settings_unix.log</unix_log>
+                    <min_children>5</min_children>
+                    <max_children>15</max_children>
+                    <min_spare_children>3</min_spare_children>
+                    <max_spare_children>5</max_spare_children>
+                </unix_config>
+            </opensrf.settings>
+
+            <open-ils.collections>
+                <keepalive>3</keepalive>
+                <stateless>1</stateless>
+                <language>perl</language>
+                <implementation>OpenILS::Application::Collections</implementation>
+                <max_requests>17</max_requests>
+                <unix_config>
+                    <unix_sock>open-ils.collections_unix.sock</unix_sock>
+                    <unix_pid>open-ils.collections_unix.pid</unix_pid>
+                    <max_requests>1000</max_requests>
+                    <unix_log>open-ils.collections_unix.log</unix_log>
+                    <min_children>1</min_children>
+                    <max_children>10</max_children>
+                    <min_spare_children>1</min_spare_children>
+                    <max_spare_children>5</max_spare_children>
+                </unix_config>
+            </open-ils.collections>
+
+            <open-ils.reporter>
+                <keepalive>3</keepalive>
+                <stateless>1</stateless>
+                <language>perl</language>
+                <implementation>OpenILS::Application::Reporter</implementation>
+                <max_requests>99</max_requests>
+                <unix_config>
+                    <unix_sock>open-ils.reporter_unix.sock</unix_sock>
+                    <unix_pid>open-ils.reporter_unix.pid</unix_pid>
+                    <max_requests>1000</max_requests>
+                    <unix_log>open-ils.reporter_unix.log</unix_log>
+                    <min_children>1</min_children>
+                    <max_children>10</max_children>
+                    <min_spare_children>1</min_spare_children>
+                    <max_spare_children>5</max_spare_children>
+                </unix_config>
+            </open-ils.reporter>
+
+
+            <open-ils.reporter-store>
+                <keepalive>6</keepalive>
+                <stateless>1</stateless>
+                <language>C</language>
+                <implementation>oils_rstore.so</implementation>
+                <max_requests>95</max_requests>
+                <unix_config>
+                    <max_requests>400</max_requests>
+                    <min_children>1</min_children>
+                    <max_children>10</max_children>
+                    <min_spare_children>1</min_spare_children>
+                    <max_spare_children>5</max_spare_children>
+                </unix_config>
+                <app_settings>
+                    <driver>pgsql</driver>
+                    <database>
+                        <type>master</type>
+                        <weight>2</weight>
+                        <host><%= @node[:evergreen][:dbhost] %></host>
+                        <port><%= @node[:evergreen][:dbport] %></port>
+                        <db><%= @node[:evergreen][:dbname] %></db>
+                        <user><%= @node[:evergreen][:dbuser] %></user>
+                        <pw><%= @node[:evergreen][:dbpw] %></pw>
+                        <client_encoding>UTF-8</client_encoding>
+                    </database>
+                </app_settings>
+            </open-ils.reporter-store>
+
+            <open-ils.permacrud>
+               <keepalive>3</keepalive>
+               <stateless>1</stateless>
+               <language>perl</language>
+               <implementation>OpenILS::Application::PermaCrud</implementation>
+               <max_requests>17</max_requests>
+               <unix_config>
+                  <unix_sock>open-ils.permacrud_unix.sock</unix_sock>
+                  <unix_pid>open-ils.permacrud_unix.pid</unix_pid>
+                  <max_requests>1000</max_requests>
+                  <unix_log>open-ils.permacrud_unix.log</unix_log>
+                  <min_children>5</min_children>
+                  <max_children>15</max_children>
+                  <min_spare_children>3</min_spare_children>
+                  <max_spare_children>5</max_spare_children>
+               </unix_config>
+            </open-ils.permacrud>
+
+            <open-ils.fielder>
+               <keepalive>3</keepalive>
+               <stateless>1</stateless>
+               <language>perl</language>
+               <implementation>OpenILS::Application::Fielder</implementation>
+               <max_requests>17</max_requests>
+               <unix_config>
+                  <unix_sock>open-ils.fielder_unix.sock</unix_sock>
+                  <unix_pid>open-ils.fielder_unix.pid</unix_pid>
+                  <max_requests>1000</max_requests>
+                  <unix_log>open-ils.fielder_unix.log</unix_log>
+                  <min_children>5</min_children>
+                  <max_children>15</max_children>
+                  <min_spare_children>3</min_spare_children>
+                  <max_spare_children>5</max_spare_children>
+               </unix_config>
+            </open-ils.fielder>
+
+            <open-ils.vandelay>
+                <keepalive>5</keepalive>
+                <stateless>1</stateless>
+                <language>perl</language>
+                <implementation>OpenILS::Application::Vandelay</implementation>
+                <max_requests>100</max_requests>
+                <unix_config>
+                    <unix_sock>vandelay_unix.sock</unix_sock>
+                    <unix_pid>vandelay_unix.pid</unix_pid>
+                    <unix_log>vandelay_unix.log</unix_log>
+                    <max_requests>100</max_requests>
+                    <min_children>1</min_children>
+                    <max_children>15</max_children>
+                    <min_spare_children>1</min_spare_children>
+                    <max_spare_children>5</max_spare_children>
+                </unix_config>
+                <app_settings>
+                    <databases>
+                        <!-- temporary location for MARC import files.  
+                            Files will be deleted after records are spooled.
+                            *note:  in a multi-brick environment, this will need to
+                            be on a write-able NFS share.  -->
+                        <importer>/tmp</importer>
+                    </databases>
+                </app_settings>
+            </open-ils.vandelay>
+
+        </apps>
+    </default>
+
+    <hosts>
+
+        <localhost> 
+            <!-- ^-=- 
+            Should match the fully qualified domain name of the host.
+
+            On Linux, the output of the following command is authoritative:
+            $ perl -MNet::Domain -e 'print Net::Domain::hostfqdn() . "\n";'
+
+            To use 'localhost' instead, run osrf_ctl.sh with the -l flag
+            -->
+
+            <activeapps>
+                <!-- services hosted on this machine -->
+                <appname>opensrf.settings</appname> 
+                <appname>opensrf.math</appname> 
+                <appname>opensrf.dbmath</appname> 
+                <appname>open-ils.acq</appname> 
+                <appname>open-ils.cat</appname> 
+                <appname>open-ils.supercat</appname> 
+                <appname>open-ils.search</appname> 
+                <appname>open-ils.circ</appname> 
+                <appname>open-ils.actor</appname> 
+                <appname>open-ils.auth</appname> 
+                <appname>open-ils.storage</appname>  
+                <appname>open-ils.penalty</appname>  
+                <appname>open-ils.cstore</appname>  
+                <appname>open-ils.collections</appname>  
+                <appname>open-ils.ingest</appname>  
+                <appname>open-ils.reporter</appname>  
+                <appname>open-ils.reporter-store</appname>  
+                <appname>open-ils.permacrud</appname>  
+                <appname>open-ils.pcrud</appname>  
+                <appname>open-ils.trigger</appname>  
+                <appname>open-ils.fielder</appname>  
+                <appname>open-ils.vandelay</appname>  
+            </activeapps>
+        </localhost>
+    </hosts>
+
+</opensrf>

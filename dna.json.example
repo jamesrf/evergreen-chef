@@ -1,0 +1,10 @@
+{
+    "opensrf": {
+        "version":"rel_1_2"
+    }
+    "evergreen": {
+        "version":"rel_1_6_1"
+    }
+    "recipes":["evergreen"]
+}
+

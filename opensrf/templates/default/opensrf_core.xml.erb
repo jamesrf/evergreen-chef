@@ -1,0 +1,155 @@
+<?xml version="1.0"?>
+<!-- 
+vim:et:ts=2:sw=2:
+-->
+<config>
+
+  <!-- bootstrap config for OpenSRF apps -->
+  <opensrf>
+
+    <routers>
+
+      <!-- define the list of routers our services will register with -->
+
+      <router>
+
+        <!-- This is the public router.  On this router, we only register applications
+             which should be accessible to everyone on the opensrf network -->
+        <name>router</name>
+        <domain>public.localhost</domain>
+        <services>
+            <service>opensrf.math</service> 
+        </services>
+      </router>
+
+      <router>
+        <!-- This is the private router.  All applications must register with 
+            this router, so no explicit <services> section is required -->
+        <name>router</name>
+        <domain>private.localhost</domain>
+      </router>
+    </routers>
+
+
+    <!-- Jabber login settings
+        Our domain should match that of the private router -->
+    <domain>private.localhost</domain>
+    <username><%= @node[:opensrf][:private][:gateway][:username] %></username>
+    <passwd><%= @node[:opensrf][:private][:gateway][:password] %></passwd>
+    <port>5222</port>
+    <!-- name of the router used on our private domain.  
+        this should match one of the <name> of the private router above -->
+    <router_name>router</router_name>
+
+    <!-- log file settings ======================================  -->
+    <!-- log to a local file -->
+    <logfile><%= @node[:opensrf][:localstatedir] %>/log/osrfsys.log</logfile>
+
+    <!-- Log to syslog. You can use this same layout for 
+        defining the logging of all services in this file -->
+    <!--
+    <logfile>syslog</logfile>
+    <syslog>local2</syslog>
+    <actlog>local1</actlog>
+    -->
+
+    <!-- 0 None, 1 Error, 2 Warning, 3 Info, 4 debug, 5 Internal (Nasty) -->
+    <loglevel>3</loglevel>
+
+    <!-- config file for the services -->
+    <settings_config><%= @node[:opensrf][:sysconfdir] %>/opensrf.xml</settings_config>
+
+  </opensrf>
+
+  <!-- Update this if you use ChopChop -->
+  <chopchop>
+    <!-- Our jabber server -->
+    <domain>private.localhost</domain>
+    <port>5222</port>
+    <!-- used when multiple servers need to communicate -->
+    <s2sport>5269</s2sport>
+    <secret>secret</secret>
+    <listen_address>10.0.0.3</listen_address>
+    <loglevel>3</loglevel>
+    <logfile><%= @node[:opensrf][:localstatedir] %>/log/osrfsys.log</logfile>
+  </chopchop>
+
+  <!-- The section between <gateway>...</gateway> is a standard OpenSRF C stack config file -->
+  <gateway>
+
+    <!--
+    we consider ourselves to be the "originating" client for requests,
+    which means we define the log XID string for log traces
+    -->
+    <client>true</client>
+
+    <!--  the routers's name on the network -->
+    <router_name>router</router_name>
+
+    <!-- jabber login info -->
+    <!-- The gateway connects to the public domain -->
+    <domain>public.localhost</domain>
+    <username><%= @node[:opensrf][:public][:gateway][:username] %></username>
+    <passwd><%= @node[:opensrf][:public][:gateway][:password] %></passwd>
+    <port>5222</port>
+    <logfile><%= @node[:opensrf][:localstatedir] %>/log/gateway.log</logfile>
+    <loglevel>3</loglevel>
+
+  </gateway>
+
+  <!-- ======================================================================================== -->
+
+    <routers>
+        <router> <!-- public router -->
+            <trusted_domains>
+                <!-- allow private services to register with this router 
+                     and public clients to send requests to this router. -->
+                <server>private.localhost</server>
+                <!-- also allow private clients to send to the router so it can receive error messages -->
+                <client>private.localhost</client>
+                <client>public.localhost</client>
+            </trusted_domains>
+            <transport>
+                <server>public.localhost</server>
+                <port>5222</port>
+                <unixpath><%= @node[:opensrf][:localstatedir] %>/sock/unix_sock</unixpath>
+                <username><%= @node[:opensrf][:public][:router][:username] %></username>
+                <password><%= @node[:opensrf][:public][:router][:password] %></password>
+                <resource>router</resource>
+                <connect_timeout>10</connect_timeout>
+                <max_reconnect_attempts>5</max_reconnect_attempts>
+            </transport>
+            <logfile><%= @node[:opensrf][:localstatedir] %>/log/router.log</logfile>
+            <!--
+            <logfile>syslog</logfile>
+            <syslog>local2</syslog>
+            -->
+            <loglevel>2</loglevel>
+        </router>
+        <router> <!-- private router -->
+            <trusted_domains>
+                <server>private.localhost</server>
+                <!-- only clients on the private domain can send requests to this router -->
+                <client>private.localhost</client>
+            </trusted_domains>
+            <transport>
+                <server>private.localhost</server>
+                <port>5222</port>
+                <username><%= @node[:opensrf][:private][:router][:username] %></username>
+                <password><%= @node[:opensrf][:private][:router][:password] %></password>
+                <resource>router</resource>
+                <connect_timeout>10</connect_timeout>
+                <max_reconnect_attempts>5</max_reconnect_attempts>
+            </transport>
+            <logfile><%= @node[:opensrf][:localstatedir] %>/log/router.log</logfile>
+            <!--
+            <logfile>syslog</logfile>
+            <syslog>local2</syslog>
+            -->
+            <loglevel>4</loglevel>
+        </router>
+    </routers>
+
+  <!-- ======================================================================================== -->
+
+</config>

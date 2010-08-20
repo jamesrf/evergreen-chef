@@ -1,0 +1,38 @@
+{
+  "replacing": {
+
+  },
+  "long_description": "",
+  "attributes": {
+
+  },
+  "maintainer": "james.fournie@gmail.com",
+  "recommendations": {
+
+  },
+  "license": "Apache v2.0",
+  "recipes": {
+    "opensrf": ""
+  },
+  "maintainer_email": "james.fournie@gmail.com",
+  "suggestions": {
+
+  },
+  "dependencies": {
+
+  },
+  "conflicting": {
+
+  },
+  "platforms": {
+
+  },
+  "description": "Configures OpenSRF",
+  "version": "0.2.0",
+  "name": "opensrf",
+  "providing": {
+    "opensrf": [
+
+    ]
+  }
+}
