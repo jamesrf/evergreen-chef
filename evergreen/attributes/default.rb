@@ -1,16 +1,18 @@
 include_attribute "opensrf"
 
-set_unless[:evergreen][:version] = 'rel_1_6_1'
+default[:evergreen][:version] = "rel_1_6"
 
-case node[:evergreen][:version]
+case "#{node[:evergreen][:version]}"
   when "trunk"
-    set_unless[:evergreen][:svnpath] = "svn://svn.open-ils.org/ILS/#{node[:evergreen][:version]}"
+    default[:evergreen][:svnpath] = "svn://svn.open-ils.org/ILS/#{node[:evergreen][:version]}"
   else
-    set_unless[:evergreen][:svnpath] = "svn://svn.open-ils.org/ILS/branches/#{node[:evergreen][:version]}"
+    default[:evergreen][:svnpath] = "svn://svn.open-ils.org/ILS/branches/#{node[:evergreen][:version]}"
 end
 
-set_unless[:evergreen][:staff_client_build_id] = 'rel_1_6_1_0'
-set_unless[:evergreen][:staff_client_symlinks] = ['rel_1_6_1_0','rel_1_6_1_1','rel_1_6_1_2','rel_1_6_1_3']
+set[:evergreen][:folder] = "/home/opensrf/Evergreen-#{node[:evergreen][:version]}"
+
+default[:evergreen][:staff_client_build_id] = "#{node[:evergreen][:version]}"
+default[:evergreen][:staff_client_symlinks] = ['rel_1_6_1_0','rel_1_6_1_1','rel_1_6_1_2','rel_1_6_1_3']
 
 
 # == DB CONFIG

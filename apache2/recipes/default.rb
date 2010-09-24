@@ -183,8 +183,22 @@ include_recipe "apache2::mod_negotiation"
 include_recipe "apache2::mod_setenvif"
 include_recipe "apache2::mod_log_config" if platform?("centos", "redhat", "suse")
 
+include_recipe "apache2::mod_expires"
+include_recipe "apache2::mod_ssl"
+include_recipe "apache2::mod_rewrite"
+
+apache_module "include"
+
 # uncomment to get working example site on centos/redhat/fedora
 #apache_site "default"
+
+bash "make_ssl_key" do
+  user "root"
+  code <<-EOH
+  mkdir "#{node[:apache][:dir]}/ssl"
+  openssl req -batch -new -x509 -days 365 -nodes -out #{node[:apache][:dir]}/ssl/server.crt -keyout #{node[:apache][:dir]}/ssl/server.key
+  EOH
+end
 
 service "apache2" do
   action :start

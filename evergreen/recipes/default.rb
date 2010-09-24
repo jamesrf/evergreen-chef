@@ -1,17 +1,17 @@
 require_recipe "opensrf"
 
-apache_module "include"
-apache_module "expires"
-apache_module "rewrite"
-bash "make_ssl_key" do
-  user "root"
-  code <<-EOH
-  mkdir "/etc/apache2/ssl"
-  cd "/etc/apache2/ssl"
-  openssl req -batch -new -x509 -days 365 -nodes -out server.crt -keyout server.key
-  EOH
-end
-apache_module "ssl"
+#apache_module "include"
+#apache_module "expires"
+#apache_module "rewrite"
+#bash "make_ssl_key" do
+  #user "root"
+  #code <<-EOH
+  #mkdir "/etc/apache2/ssl"
+  #cd "/etc/apache2/ssl"
+  #openssl req -batch -new -x509 -days 365 -nodes -out server.crt -keyout server.key
+  #EOH
+#end
+#apache_module "ssl"
 
 
 
@@ -19,6 +19,14 @@ package "yaz"
 package "aspell"
 package "aspell-en"
 package "libpq-dev"
+package "libgd2-noxpm"
+package "libssh2-1-dev"
+
+# for translations
+package "translate-toolkit"
+package "python-dev"
+package "python-setuptools"
+package "python-lxml"
 
 case node[:lsb][:codename]
   when "hardy"
@@ -33,37 +41,59 @@ end
 package "postgresql-client"
 
 # perl packages
-package "libclass-dbi-abstractsearch-perl"
 package "liblog-log4perl-perl"
-package "libtext-aspell-perl"
+
 
 # build all our perl modules in CPAN
-
+cpan_module "YAML"
+cpan_module "YAML::Syck"
+cpan_module "Text::CSV"
+cpan_module "Bit::Vector"
 cpan_module "Business::CreditCard"
 cpan_module "Business::CreditCard::Object"
+cpan_module "Business::EDI"
 cpan_module "Business::ISBN"
+cpan_module "Business::ISBN::Data"
 cpan_module "Business::OnlinePayment::AuthorizeNet"
 cpan_module "Business::OnlinePayment"
+cpan_module "Carp::Clan"
+cpan_module "Class::DBI::AbstractSearch"
 cpan_module "Class::DBI::Pg"
+cpan_module "Class::Factory::Util"
+cpan_module "Class::Singleton"
+cpan_module "Date::Calc"
+cpan_module "Date::Manip"
+cpan_module "DateTime"
+cpan_module "DateTime::Format::ISO8601"
 cpan_module "DateTime::Format::Builder"
 cpan_module "DateTime::Format::Mail"
-cpan_module "DateTime"
+cpan_module "DateTime::Format::Strptime"
+cpan_module "DateTime::Locale"
+cpan_module "DateTime::Set"
 cpan_module "DateTime::Timezone"
+cpan_module "DBD::Pg"
+cpan_module "Email::Abstract"
+cpan_module "Email::Address"
+cpan_module "Email::Date::Format"
 cpan_module "Email::Send"
+cpan_module "Email::Send::IO"
+cpan_module "Email::Simple"
+cpan_module "Filter"
+cpan_module "GD::Graph"
 cpan_module "GD::Graph3D"
+cpan_module "GD::Text"
+cpan_module "IO::All"
 cpan_module "Library::CallNumber::LC"
 cpan_module "MARC::Charset"
 cpan_module "MARC::Record"
 cpan_module "MARC::XML"
+cpan_module "Net::Server"
 cpan_module "Net::Z3950"
 cpan_module "Net::Z3950::Simple2ZOOM"
 cpan_module "OLE::Storage::Lite"
 cpan_module "SRU"
 cpan_module "Spreadsheet::WriteExcel"
 cpan_module "Text::Aspell"
-cpan_module "Text::CSV"
-cpan_module "YAML"
-
 
 cpan_module "UUID::Tiny"
 cpan_module "ZOOM"
@@ -153,14 +183,14 @@ subversion "Evergreen" do
   user "opensrf"
   group "opensrf"
   repository "#{node[:evergreen][:svnpath]}"
-  destination "/home/opensrf/Evergreen-ILS-#{node[:evergreen][:version]}"
+  destination "#{node[:evergreen][:folder]}"
   action :sync
 end
 
 bash "make_evergreen" do
   user "opensrf"
   code <<-EOH
-  cd "/home/opensrf/Evergreen-ILS-#{node[:evergreen][:version]}"
+  cd "#{node[:evergreen][:folder]}"
   ./autogen.sh
   echo "./configure --prefix=#{node[:evergreen][:prefix]} --sysconfdir=#{node[:evergreen][:sysconfdir]}" > test.txt
   ./configure --prefix=#{node[:evergreen][:prefix]} --sysconfdir=#{node[:evergreen][:sysconfdir]}
@@ -168,14 +198,14 @@ bash "make_evergreen" do
   EOH
 end
 
- bash "install_evergreen" do
- user "root"
-   code <<-EOH
-   cd "/home/opensrf/Evergreen-ILS-#{node[:evergreen][:version]}"
-   make STAFF_CLIENT_BUILD_ID=#{node[:evergreen][:staff_client_build_id]} install
-   cd "#{node[:evergreen][:localstatedir]}/web/xul"
-   ln -sf #{node[:evergreen][:staff_client_build_id]}/server server
-   EOH
+bash "install_evergreen" do
+  user "root"
+  code <<-EOH
+    cd "#{node[:evergreen][:folder]}"
+    make STAFF_CLIENT_BUILD_ID=#{node[:evergreen][:staff_client_build_id]} install
+    cd "#{node[:evergreen][:localstatedir]}/web/xul"
+    ln -sf #{node[:evergreen][:staff_client_build_id]}/server server
+  EOH
 end
 
 node[:evergreen][:staff_client_symlinks].each do |s|
@@ -194,12 +224,20 @@ if node[:evergreen][:buildlocaldb]
   package "postgresql-contrib-8.4"
   package "postgresql-plperl-8.4"
   package "postgresql-server-dev-8.4"
-  
+
+  bash "wipedb" do
+    user "postgres"
+    group "postgres"
+    code <<-EOH
+      psql -c 'DROP DATABASE IF EXISTS #{node[:evergreen][:dbname]}'
+      psql -c 'DROP ROLE IF EXISTS #{node[:evergreen][:dbuser]}'
+    EOH
+  end
+ 
   bash "createdb" do
     user "postgres"
     group "postgres"
     code <<-EOH
-      psql -c 'DROP DATABASE #{node[:evergreen][:dbname]}'
       createdb -T template1 -E UNICODE #{node[:evergreen][:dbname]}
       createlang plperl #{node[:evergreen][:dbname]}
       createlang plperlu #{node[:evergreen][:dbname]}
@@ -215,7 +253,7 @@ if node[:evergreen][:buildlocaldb]
     user "opensrf"
     group "opensrf"
     code <<-EOH
-      cd "/home/opensrf/Evergreen-ILS-#{node[:evergreen][:version]}"
+      cd "#{node[:evergreen][:folder]}"
       perl Open-ILS/src/support-scripts/eg_db_config.pl --update-config \
        --service all --create-schema --create-bootstrap --create-offline \
        --user #{node[:evergreen][:dbuser]} --password #{node[:evergreen][:dbpw]} --hostname #{node[:evergreen][:dbhost]} --port #{node[:evergreen][:dbport]} \

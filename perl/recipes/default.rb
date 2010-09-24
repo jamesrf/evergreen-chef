@@ -44,7 +44,7 @@ directory "/root/.cpan" do
   mode 0750
 end
 
-cookbook_file "CPAN-Config.pm" do
+remote_file "CPAN-Config.pm" do
   case node[:platform]
   when "centos","redhat"
     path "/usr/lib/perl5/5.8.8/CPAN/Config.pm"
