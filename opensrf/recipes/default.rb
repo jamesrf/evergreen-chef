@@ -35,6 +35,7 @@ template "/home/opensrf/.bashrc" do
     group "opensrf"
 end
 
+require_recipe "apt"
 require_recipe "perl"
 require_recipe "apache2"
 require_recipe "ejabberd"
