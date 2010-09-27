@@ -22,6 +22,7 @@ Example OpenSRF bootstrap configuration file for Evergreen
           <service>open-ils.actor</service>
           <service>open-ils.acq</service>
           <service>open-ils.auth</service>
+          <service>open-ils.booking</service>
           <service>open-ils.cat</service>
           <service>open-ils.circ</service>
           <service>open-ils.collections</service>
@@ -82,6 +83,8 @@ Example OpenSRF bootstrap configuration file for Evergreen
     <client>true</client>
     <router_name>router</router_name>
 
+    <!-- The gateway connects to the public domain -->
+    <domain>public.localhost</domain>
     <!-- This section will be soon deprecated for multi-domain mode... -->
     <services>
       <service>opensrf.math</service>
@@ -96,8 +99,6 @@ Example OpenSRF bootstrap configuration file for Evergreen
     </services>
 
     <!-- jabber login info -->
-    <!-- The gateway connects to the public domain -->
-    <domain>public.localhost</domain>
     <username><%= @node[:opensrf][:public][:gateway][:username] %></username>
     <passwd><%= @node[:opensrf][:public][:gateway][:password] %></passwd>
     <port>5222</port>
