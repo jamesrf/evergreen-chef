@@ -1,5 +1,7 @@
+# include the opensrf recipe
 require_recipe "opensrf"
 
+# moved to apache recipe
 #apache_module "include"
 #apache_module "expires"
 #apache_module "rewrite"
@@ -13,14 +15,49 @@ require_recipe "opensrf"
 #end
 #apache_module "ssl"
 
-
-
-package "yaz"
+# debs from makefile
+package "apache2-prefork-dev"
 package "aspell"
 package "aspell-en"
+package "libbusiness-creditcard-perl"
+package "libbusiness-onlinepayment-authorizenet-perl"
+package "libbusiness-onlinepayment-perl"
+package "libdatetime-format-builder-perl"
+package "libdatetime-format-iso8601-perl"
+package "libdatetime-format-mail-perl"
+package "libdatetime-perl"
+package "libdatetime-timezone-perl"
+package "libdatetime-set-perl"
+package "libdbd-pg-perl"
+package "libemail-send-perl"
+package "libgd-graph3d-perl"
+package "liblog-log4perl-perl"
+package "libmarc-record-perl"
+package "libncurses5-dev"
+package "libnet-server-perl"
+package "libnspr4-dev"
+package "libole-storage-lite-perl"
+package "libparent-perl"
 package "libpq-dev"
-package "libgd2-noxpm"
+package "libreadline5-dev"
+package "libspreadsheet-writeexcel-perl"
 package "libssh2-1-dev"
+package "libtext-aspell-perl"
+package "libtext-csv-perl"
+package "libuniversal-require-perl"
+package "libunix-syslog-perl"
+
+
+# extra debs
+package "libbusiness-isbn-perl"
+package "libbusiness-isbn-data-perl"
+package "libmarc-charset-perl"
+package "libmarc-xml-perl"
+package "libnet-z3950-zoom-perl"
+package "yaz"
+
+# pg-client
+package "postgresql-client"
 
 # for translations
 package "translate-toolkit"
@@ -28,6 +65,7 @@ package "python-dev"
 package "python-setuptools"
 package "python-lxml"
 
+# this needs tweakery into a more full fledged cross-platformyness
 case node[:lsb][:codename]
   when "hardy"
     package "libyaz2-dev"
@@ -37,68 +75,29 @@ case node[:lsb][:codename]
     package "libyaz3-dev"
 end
 
-# pg-client
-package "postgresql-client"
-
-# perl packages
-package "liblog-log4perl-perl"
 
 
-# build all our perl modules in CPAN
-cpan_module "YAML"
-cpan_module "YAML::Syck"
-cpan_module "Text::CSV"
-cpan_module "Bit::Vector"
-cpan_module "Business::CreditCard"
-cpan_module "Business::CreditCard::Object"
+# base CPAN installs
 cpan_module "Business::EDI"
-cpan_module "Business::ISBN"
-cpan_module "Business::ISBN::Data"
-cpan_module "Business::OnlinePayment::AuthorizeNet"
-cpan_module "Business::OnlinePayment"
-cpan_module "Carp::Clan"
-cpan_module "Class::DBI::AbstractSearch"
-cpan_module "Class::DBI::Pg"
-cpan_module "Class::Factory::Util"
-cpan_module "Class::Singleton"
-cpan_module "Date::Calc"
-cpan_module "Date::Manip"
-cpan_module "DateTime"
-cpan_module "DateTime::Format::ISO8601"
-cpan_module "DateTime::Format::Builder"
-cpan_module "DateTime::Format::Mail"
-cpan_module "DateTime::Format::Strptime"
-cpan_module "DateTime::Locale"
-cpan_module "DateTime::Set"
-cpan_module "DateTime::Timezone"
-cpan_module "DBD::Pg"
-cpan_module "Email::Abstract"
-cpan_module "Email::Address"
-cpan_module "Email::Date::Format"
-cpan_module "Email::Send"
-cpan_module "Email::Send::IO"
-cpan_module "Email::Simple"
-cpan_module "Filter"
-cpan_module "GD::Graph"
-cpan_module "GD::Graph3D"
-cpan_module "GD::Text"
-cpan_module "IO::All"
 cpan_module "Library::CallNumber::LC"
-cpan_module "MARC::Charset"
-cpan_module "MARC::Record"
-cpan_module "MARC::XML"
-cpan_module "Net::Server"
-cpan_module "Net::Z3950"
+cpan_module "Net::uFTP"
 cpan_module "Net::Z3950::Simple2ZOOM"
-cpan_module "OLE::Storage::Lite"
 cpan_module "SRU"
-cpan_module "Spreadsheet::WriteExcel"
-cpan_module "Text::Aspell"
 
+# cpan more
+cpan_module "Business::CreditCard::Object"
+cpan_module "MARC::Record"
 cpan_module "UUID::Tiny"
-cpan_module "ZOOM"
 
-# ONLY NEEDED FOR TRUNK
+# cpan safe
+cpan_module "Safe"
+
+# cpan force
+#cpan_module "Class::DBI::Frozen::301"
+#  force true
+#end
+
+# Call Numbers
 bash "library-cn-lc" do
   user "root"
   code <<-EOH
@@ -208,6 +207,7 @@ bash "install_evergreen" do
   EOH
 end
 
+# === MAKE SYMLINKS FOR STAFF CLIENT
 node[:evergreen][:staff_client_symlinks].each do |s|
   bash "symlink_#{s}" do
     user "root"
@@ -218,7 +218,7 @@ node[:evergreen][:staff_client_symlinks].each do |s|
  end
 end
 
-#pg-server-debs
+# === DATABASE STUFF ===
 if node[:evergreen][:buildlocaldb]
   package "postgresql"
   package "postgresql-contrib-8.4"
@@ -263,6 +263,9 @@ if node[:evergreen][:buildlocaldb]
 
 end
 
+
+
+# ==== XML AND APACHE CONFIG FILES
 template "#{node[:evergreen][:sysconfdir]}/opensrf.xml" do
     source "opensrf.xml.erb"
     mode 0600
@@ -286,7 +289,6 @@ end
 
 template "/etc/apache2/sites-available/eg.conf" do
   source "eg.conf.erb"
-  mode 0660
   owner "opensrf"
   group "opensrf"
 end
@@ -305,6 +307,9 @@ template "/etc/apache2/startup.pl" do
   group "opensrf"
 end
 
+
+
+# ==== MISC FUMBLING ABOUT
 
 bash "mkdir_lock" do
   user "opensrf"
@@ -327,6 +332,8 @@ bash "fixowners" do
   EOH
 end
 
+
+# ==== OPENSRF USER ENV SETTINGS
 template "/home/opensrf/.profile" do
    source "profile.erb"
    mode 0640

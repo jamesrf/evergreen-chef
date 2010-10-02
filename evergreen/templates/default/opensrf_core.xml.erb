@@ -58,22 +58,14 @@ Example OpenSRF bootstrap configuration file for Evergreen
      -->
     <router_name>router</router_name>
 
-    <!-- log file settings ======================================  -->
-    <!-- log to a local file -->
     <logfile><%= @node[:opensrf][:localstatedir] %>/log/osrfsys.log</logfile>
-
-    <!-- Log to syslog. You can use this same layout for 
-        defining the logging of all services in this file -->
     <!--
       <logfile>syslog</logfile>
       <syslog>local0</syslog>
       <actlog>local1</actlog>
      -->
     <loglevel>3</loglevel>
-
-    <!-- config file for the services -->
     <settings_config><%= @node[:opensrf][:sysconfdir] %>/opensrf.xml</settings_config>
-
   </opensrf>
   <!-- 
     The section between <gateway>...</gateway> is a standard OpenSRF C
@@ -83,8 +75,9 @@ Example OpenSRF bootstrap configuration file for Evergreen
     <client>true</client>
     <router_name>router</router_name>
 
-    <!-- The gateway connects to the public domain -->
+    <!-- The gateway connects to the public domain for security -->
     <domain>public.localhost</domain>
+
     <!-- This section will be soon deprecated for multi-domain mode... -->
     <services>
       <service>opensrf.math</service>

@@ -160,7 +160,7 @@ template "#{node[:apache][:dir]}/ports.conf" do
 end
 
 template "#{node[:apache][:dir]}/sites-available/default" do
-  source "eg.conf.erb"
+  source "default-site.erb"
   owner "root"
   group "root"
   mode 0644

@@ -1,6 +1,6 @@
 include_attribute "opensrf"
 
-default[:evergreen][:version] = "rel_1_6"
+default[:evergreen][:version] = "rel_2_0"
 
 case "#{node[:evergreen][:version]}"
   when "trunk"
@@ -12,8 +12,7 @@ end
 set[:evergreen][:folder] = "/home/opensrf/Evergreen-#{node[:evergreen][:version]}"
 
 default[:evergreen][:staff_client_build_id] = "#{node[:evergreen][:version]}"
-default[:evergreen][:staff_client_symlinks] = ['rel_1_6_1_0','rel_1_6_1_1','rel_1_6_1_2','rel_1_6_1_3']
-
+default[:evergreen][:staff_client_symlinks] = ['rel_2_0_1','rel_2_0_2']
 
 # == DB CONFIG
 

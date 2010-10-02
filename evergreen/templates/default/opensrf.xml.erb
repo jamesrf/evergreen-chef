@@ -54,6 +54,39 @@ vim:et:ts=4:sw=4:
         <smtp_server>localhost</smtp_server>
         <sender_address>evergreen@localhost</sender_address>
 
+        <!-- global telephony (asterisk) settings -->
+        <telephony>
+            <!-- replace all values below when telephony server is configured -->
+            <enabled>0</enabled>
+            <driver>SIP</driver>    <!-- SIP (default) or multi -->
+            <channels>              <!-- explicit list of channels used if multi -->
+                                    <!-- A channel specifies technology/resource -->
+                <channel>Zap/1</channel>
+                <channel>Zap/2</channel>
+                <channel>IAX/user:secret@widgets.biz</channel>
+            </channels>
+            <host>localhost</host>
+            <port>10080</port>
+            <user>evergreen</user>
+            <pw>evergreen</pw>
+            <!--
+                The overall composition of callfiles is determined by the
+                relevant template, but this section can be invoked for callfile
+                configs common to all outbound calls.
+                callfile_lines will be inserted into ALL generated callfiles
+                after the Channel line.  This content mat be overridden
+                (in whole) by the org unit setting callfile_lines.
+                Warning: Invalid syntax may break ALL outbound calls.
+            -->
+            <!-- <callfile_lines>
+                MaxRetries: 3
+                RetryTime: 60
+                WaitTime: 30
+                Archive: 1
+                Extension: 10
+            </callfile_lines> -->
+        </telephony>
+
         <!-- Overdue notices -->
         <overdue>
 
@@ -229,16 +262,8 @@ vim:et:ts=4:sw=4:
 
         <added_content>
 
-            <!-- XXX If you use the Amazon plugin, you must link back to Amazon in the OPAC -->
-
-            <!-- load the Amazon added content module -->
-            <module>OpenILS::WWW::AddedContent::Amazon</module>
-            <!--
-            Base URL for Amazon added content fetching.  This URL may
-            need to be shortened when new (read: non-image) content 
-            fetching capabilities are added
-            -->
-            <base_url>http://images.amazon.com/images/P/</base_url>
+            <!-- load the OpenLibrary added content module -->
+            <module>OpenILS::WWW::AddedContent::OpenLibrary</module>
 
             <!--
             Max number of seconds to wait for an added content request to 
@@ -264,6 +289,28 @@ vim:et:ts=4:sw=4:
             <userid>MY_USER_ID</userid>
 
             <!--
+            Base URL for Amazon added content fetching. Not needed by OpenLibrary
+            <base_url>http://images.amazon.com/images/P/</base_url>
+            -->
+
+            <!--
+            Segregating the details for ContentCafe out for easier use.  At some point, we
+            may want to support multiple services at one time.
+            -->
+            <ContentCafe>
+                <userid>MY_USER_ID</userid>
+                <password>MY_PASSWORD</password>
+
+                <!--
+                If no cover/jacket image exists for a given ISBN, then a value of T here will
+                return an 80x120 pixel image containing the text "No Image Available".  A
+                value of 1 will return a 1x1 pixel image.
+                -->
+                <return_behavior_on_no_jacket_image>T</return_behavior_on_no_jacket_image>
+            </ContentCafe>
+
+            <!--
+ 
             You can add free-form settings here and they will be accessible
             within the added content module
             -->
@@ -283,6 +330,15 @@ vim:et:ts=4:sw=4:
                 </servers>
                 <max_cache_time>86400</max_cache_time>
             </global>
+            <anon>
+                <!-- anonymous cache.  currently, primarily used for web session caching -->
+                <servers>
+                    <server>localhost:11211</server>
+                </servers>
+                <max_cache_time>1800</max_cache_time>
+                <!-- maximum size of a single cache entry / default = 100k-->
+                <max_cache_size>102400</max_cache_size>
+            </anon>
         </cache>
 
         <apps>
@@ -353,6 +409,7 @@ vim:et:ts=4:sw=4:
                         <opac>420</opac>
                         <staff>7200</staff>
                         <temp>300</temp>
+						<persist>2 weeks</persist>
                     </default_timeout>
                 </app_settings>
             </open-ils.auth>
@@ -381,6 +438,20 @@ vim:et:ts=4:sw=4:
                 <app_settings>
                     <marc_html_xsl>oilsMARC21slim2HTML.xsl</marc_html_xsl>
                     <marc_html_xsl_slim>oilsMARC21slim2HTMLslim.xsl</marc_html_xsl_slim>
+
+                    <spelling_dictionary>
+                        <!-- 
+                            Optionally configure different dictionaries depending on search context.  
+                            If no dictionaries are defined, the default Aspell dictionary is used.
+                        -->
+                        <!--
+                        <default><%= @node[:evergreen][:localstatedir] %>/data/default_dict.txt</default>
+                        <title><%= @node[:evergreen][:localstatedir] %>/data/title_dict.txt</title>
+                        <author><%= @node[:evergreen][:localstatedir] %>/data/author_dict.txt</author>
+                        <subject><%= @node[:evergreen][:localstatedir] %>/data/subject_dict.txt</subject>
+                        <series><%= @node[:evergreen][:localstatedir] %>/data/series_dict.txt</series>
+                        -->
+                    </spelling_dictionary>
 
                     <!-- Default to using staged search -->
                     <use_staged_search>true</use_staged_search>
@@ -429,6 +500,11 @@ vim:et:ts=4:sw=4:
                     <min_spare_children>1</min_spare_children>
                     <max_spare_children>5</max_spare_children>
                 </unix_config>
+                <!-- set this to 'true' to have barcode search also search patron records by unique ID -->
+                <app_settings>
+                    <id_as_barcode>false</id_as_barcode>
+                </app_settings>
+
             </open-ils.actor>
 
             <open-ils.booking>
@@ -449,7 +525,9 @@ vim:et:ts=4:sw=4:
                 </unix_config>
                 <app_settings>
                     <marctemplates>
-                        <K_book>LOCALSTATEDIR/templates/marc/k_book.xml</K_book>
+                        <K_book><%= @node[:evergreen][:localstatedir] %>/templates/marc/k_book.xml</K_book>
+                        <K_audio><%= @node[:evergreen][:localstatedir] %>/templates/marc/k_audio.xml</K_audio>
+                        <K_video><%= @node[:evergreen][:localstatedir] %>/templates/marc/k_video.xml</K_video>
                     </marctemplates>
                 </app_settings>
             </open-ils.booking>
@@ -714,6 +792,12 @@ vim:et:ts=4:sw=4:
                     <max_spare_children>5</max_spare_children>
                 </unix_config>
                 <app_settings>
+                    <!-- default_preferred_language: Set the global, default preferred languange -->
+                    <default_preferred_language>eng</default_preferred_language>
+
+                    <!-- default_preferred_language_weight: Set the weight (higher is "better") for the preferred language -->
+                    <default_preferred_language_weight>5</default_preferred_language_weight>
+
                     <script_path><%= @node[:evergreen][:libdir] %>/javascript/</script_path>
                     <script_path><%= @node[:evergreen][:localstatedir] %>/catalog/</script_path>
                     <scripts>
@@ -800,6 +884,35 @@ vim:et:ts=4:sw=4:
                     </database>
                 </app_settings>
             </open-ils.pcrud>
+
+
+            <open-ils.qstore>
+                <keepalive>6</keepalive>
+                <stateless>1</stateless>
+                <language>C</language>
+                <implementation>oils_qstore.so</implementation>
+                <max_requests>200</max_requests>
+                <unix_config>
+                    <max_requests>1000</max_requests>
+                    <min_children>1</min_children>
+                    <max_children>15</max_children>
+                    <min_spare_children>1</min_spare_children>
+                    <max_spare_children>5</max_spare_children>
+                </unix_config>
+                <app_settings>
+                    <driver>pgsql</driver>
+                    <database>
+                        <type>master</type>
+                        <weight>2</weight>
+                        <user><%= @node[:evergreen][:dbuser] %></user>
+                        <host><%= @node[:evergreen][:dbhost] %></host>
+                        <port><%= @node[:evergreen][:dbport] %></port>
+                        <pw><%= @node[:evergreen][:dbpw] %></pw>
+                        <db><%= @node[:evergreen][:dbname] %></db>
+                        <client_encoding>UTF-8</client_encoding>
+                    </database>
+                </app_settings>
+            </open-ils.qstore>
 
 
             <opensrf.settings>
@@ -948,6 +1061,26 @@ vim:et:ts=4:sw=4:
                 </app_settings>
             </open-ils.vandelay>
 
+            <open-ils.serial>
+                <keepalive>3</keepalive>
+                <stateless>1</stateless>
+                <language>perl</language>
+                <implementation>OpenILS::Application::Serial</implementation>
+                <max_requests>17</max_requests>
+                <unix_config>
+                    <unix_sock>open-ils.serial_unix.sock</unix_sock>
+                    <unix_pid>open-ils.serial_unix.pid</unix_pid>
+                    <max_requests>1000</max_requests>
+                    <unix_log>open-ils.serial_unix.log</unix_log>
+                    <min_children>5</min_children>
+                    <max_children>15</max_children>
+                    <min_spare_children>3</min_spare_children>
+                    <max_spare_children>5</max_spare_children>
+                </unix_config>
+                <app_settings>
+                </app_settings>
+            </open-ils.serial>
+
         </apps>
     </default>
 
@@ -988,6 +1121,7 @@ vim:et:ts=4:sw=4:
                 <appname>open-ils.trigger</appname>  
                 <appname>open-ils.fielder</appname>  
                 <appname>open-ils.vandelay</appname>  
+                <appname>open-ils.serial</appname>  
             </activeapps>
         </localhost>
     </hosts>

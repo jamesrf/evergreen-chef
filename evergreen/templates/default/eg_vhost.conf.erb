@@ -4,15 +4,30 @@
 # ----------------------------------------------------------------------------------
 
 # ----------------------------------------------------------------------------------
-# Point / to the opac -- Craftsman is the new default. Swap lines for the old skin.
+# Point / to the opac - if you have a custom skin or locale, point at it here
 # ----------------------------------------------------------------------------------
-# RedirectMatch 301 ^/$ /opac/en-US/skin/default/xml/index.xml
-RedirectMatch 301 ^/$ /opac/en-US/skin/craftsman/xml/index.xml
+RedirectMatch 301 ^/$ /opac/en-US/skin/default/xml/index.xml
+
+# ----------------------------------------------------------------------------------
+# Point / to the IP address redirector
+# ----------------------------------------------------------------------------------
+#<LocationMatch ^/$>
+#    SetHandler perl-script
+#    PerlHandler OpenILS::WWW::Redirect
+#    Options +ExecCGI
+#    PerlSendHeader On
+#    #PerlSetVar OILSRedirectSkin "default"
+#    # OILSRedirectDepth defaults to the depth of the branch that the OPAC was directed to
+#    #PerlSetVar OILSRedirectDepth "0"
+#    #PerlSetVar OILSRedirectLocale "en-US"
+#    allow from all
+#</LocationMatch>
+
 
 # ----------------------------------------------------------------------------------
 # Assign a default locale to the accessible OPAC
 # ----------------------------------------------------------------------------------
-RedirectMatch 301 ^/opac/extras/slimpac/start.html$ /opac/en-US/extras/slimpac/start.html
+RedirectMatch 301 ^/opac/extras/slimpac/start.html$    /opac/en-US/extras/slimpac/start.html
 RedirectMatch 301 ^/opac/extras/slimpac/advanced.html$ /opac/en-US/extras/slimpac/advanced.html
 
 # ----------------------------------------------------------------------------------
@@ -98,8 +113,80 @@ RewriteRule - - [E=locale:%1] [L]
     # and are willing to accept some increased server load, set this:
     #SetEnvIf Request_URI ".*" OILS_OPAC_BYPASS_STATIC_FOR_HTTPS=yes
 
+    # Specify a ChiliFresh account to integrate their services with the OPAC
+    #SetEnv OILS_CHILIFRESH_ACCOUNT
+    #SetEnv OILS_CHILIFRESH_PROFILE
+    #SetEnv OILS_CHILIFRESH_URL http://chilifresh.com/on-site/js/evergreen.js
+
+    # Specify the initial script URL for Novelist (containing account credentials, etc.)
+    #SetEnv OILS_NOVELIST_URL
+    
+
+    # Uncomment to force SSL any time a patron is logged in.  This protects 
+    # authentication tokens.  Left commented out for backwards compat for now.
+    #SetEnv OILS_OPAC_FORCE_LOGIN_SSL 1
+
 </LocationMatch>
 
+<Location /opac/>
+    # ----------------------------------------------------------------------------------
+    # Some mod_deflate fun
+    # ----------------------------------------------------------------------------------
+    <IfModule mod_deflate.c>
+        SetOutputFilter DEFLATE
+
+        BrowserMatch ^Mozilla/4 gzip-only-text/html
+        BrowserMatch ^Mozilla/4\.0[678] no-gzip
+        BrowserMatch \bMSI[E] !no-gzip !gzip-only-text/html
+
+        SetEnvIfNoCase Request_URI \.(?:gif|jpe?g|png)$ no-gzip dont-vary
+
+        <IfModule mod_headers.c>
+            Header append Vary User-Agent env=!dont-vary
+        </IfModule>
+    </IfModule>
+
+</Location>
+
+<Location //opac/>
+    # ----------------------------------------------------------------------------------
+    # Some mod_deflate fun
+    # ----------------------------------------------------------------------------------
+    <IfModule mod_deflate.c>
+        SetOutputFilter DEFLATE
+
+        BrowserMatch ^Mozilla/4 gzip-only-text/html
+        BrowserMatch ^Mozilla/4\.0[678] no-gzip
+        BrowserMatch \bMSI[E] !no-gzip !gzip-only-text/html
+
+        SetEnvIfNoCase Request_URI \.(?:gif|jpe?g|png)$ no-gzip dont-vary
+
+        <IfModule mod_headers.c>
+            Header append Vary User-Agent env=!dont-vary
+        </IfModule>
+    </IfModule>
+
+</Location>
+
+<Location /js/>
+    # ----------------------------------------------------------------------------------
+    # Some mod_deflate fun
+    # ----------------------------------------------------------------------------------
+    <IfModule mod_deflate.c>
+        SetOutputFilter DEFLATE
+
+        BrowserMatch ^Mozilla/4 gzip-only-text/html
+        BrowserMatch ^Mozilla/4\.0[678] no-gzip
+        BrowserMatch \bMSI[E] !no-gzip !gzip-only-text/html
+
+        SetEnvIfNoCase Request_URI \.(?:gif|jpe?g|png)$ no-gzip dont-vary
+
+        <IfModule mod_headers.c>
+            Header append Vary User-Agent env=!dont-vary
+        </IfModule>
+    </IfModule>
+
+</Location>
 
 # ----------------------------------------------------------------------------------
 # Force SSL on the OPAC's "My Account" page
@@ -238,6 +325,13 @@ RewriteRule - - [E=locale:en-US] [L]
     PerlSendHeader On
     allow from all
 </Location> 	
+<Location /opac/extras/startwith>
+    SetHandler perl-script
+    PerlHandler OpenILS::WWW::SuperCat::string_startwith
+    Options +ExecCGI
+    PerlSendHeader On
+    allow from all
+</Location> 	
 	
 # ----------------------------------------------------------------------------------
 # Module for displaying OpenSRF API documentation
@@ -337,13 +431,26 @@ RewriteRule - - [E=locale:en-US] [L]
     Options +Includes
     AddOutputFilter INCLUDES;XMLENT .xhtml
 </LocationMatch>
+
 <LocationMatch /reports/fm_IDL.xml>
-    Options +Includes
-    XMLEntStripDoctype "yes"
-    XMLEntStripComments "no"
-    XMLEntContentType "text/xml; charset=utf-8"
-    AddOutputFilter INCLUDES;XMLENT .xml
+    IDLChunkStripPI "yes"
+    IDLChunkEscapeScript "no"
+    IDLChunkStripComments "yes"
+    IDLChunkStripDoctype "yes"
+    IDLChunkContentType "application/xml; charset=utf-8"
+    AddOutputFilter INCLUDES;IDLCHUNK .xml
 </LocationMatch>
+
+# ----------------------------------------------------------------------------------
+# EDI Message viewer
+# ----------------------------------------------------------------------------------
+<Location /edi>
+    SetHandler perl-script
+    PerlHandler OpenILS::WWW::EDI
+    Options +ExecCGI
+    PerlSendHeader On
+    allow from all
+</Location> 	
 
 # ----------------------------------------------------------------------------------
 # XML-RPC gateway
@@ -362,6 +469,7 @@ RewriteRule - - [E=locale:en-US] [L]
 RewriteEngine on
 RewriteRule ^/conify/([a-z]{2}-[A-Z]{2})/global/(.*)$ /conify/global/$2 [E=locale:$1,L]
 <Location /conify>
+    Options +Includes
     XMLEntStripPI "yes"
     XMLEntEscapeScript "no"
     XMLEntStripComments "no"
@@ -434,4 +542,14 @@ RewriteRule ^/openurl$ ${openurl:%1} [NE,PT]
     SetHandler None
 </LocationMatch>
 
+# ----------------------------------------------------------------------------------
+# Some mod_deflate logging setup
+# ----------------------------------------------------------------------------------
+<IfModule mod_deflate.c>
+    DeflateFilterNote Input instream
+    DeflateFilterNote Output outstream
+    DeflateFilterNote Ratio ratio
 
+    LogFormat '"%r" %{outstream}n/%{instream}n (%{ratio}n%%)' deflate
+    CustomLog /var/log/apache2/deflate_log deflate
+</IfModule>

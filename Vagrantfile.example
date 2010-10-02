@@ -3,7 +3,15 @@ Vagrant::Config.run do |config|
   # and listing of configuration options, please check the documentation
   # online.
 
+
+  # note: this doesn't seem to work properly yet
+  config.chef.json.merge!({
+    :opensrf => { :version => "rel_1_6" },
+    :evergreen => { :version => "rel_2_0" }
+  })
+
   config.chef.run_list.clear
+  #config.chef.add_recipe("opensrf") 
   config.chef.add_recipe("evergreen")
   config.chef.cookbooks_path = "evergreen_cookbooks"
 
@@ -16,10 +24,6 @@ Vagrant::Config.run do |config|
     vm.name = "Evergreen Project VM"
   end
 
-  config.chef.json.merge!({
-    :opensrf => { :version => "rel_1_2" },
-    :evergreen => { :version => "rel_1_6_1" }
-  })
 
 
 

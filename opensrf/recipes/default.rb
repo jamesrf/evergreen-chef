@@ -47,7 +47,6 @@ execute "wipe_mnesia" do
   notifies :restart, resources(:service => "ejabberd"), :immediately
 end
 
-package "apt"
 package "apache2-mpm-prefork"
 package "apache2-prefork-dev"
 package "autoconf"
@@ -55,62 +54,45 @@ package "automake"
 package "build-essential"
 package "less"
 package "libapache2-mod-perl2"
+package "libmemcached-dev"
+package "libclass-dbi-abstractsearch-perl"
+package "libclass-dbi-sqlite-perl"
+package "libdatetime-format-builder-perl"
+package "libdatetime-format-mail-perl"
+package "libdatetime-perl"
+package "libdatetime-timezone-perl"
 package "liberror-perl"
 package "libexpat1-dev"
+package "libfile-find-rule-perl"
+package "libfreezethaw-perl"
 package "libgcrypt11-dev"
 package "libgdbm-dev"
-package "libmemcache-dev"
+package "liblog-log4perl-perl"
+package "libmodule-build-perl"
+package "libnet-jabber-perl"
 package "libperl-dev"
 package "libreadline5-dev"
+package "librpc-xml-perl"
+package "libtemplate-perl"
+package "libtest-pod-perl"
+package "libtie-ixhash-perl"
 package "libtool"
+package "libuniversal-require-perl"
+package "libunix-syslog-perl"
+package "libwww-perl"
 package "libxml2-dev"
+package "libxml-libxml-perl"
+package "libxml-libxslt-perl"
+package "libxml-simple-perl"
 package "libxslt1-dev"
-
 package "ntpdate"
+package "pkg-config"
 package "psmisc"
 package "python-dev"
 package "python-libxml2"
 package "python-setuptools"
-package "subversion"
 
-# required for >= 1.4, should be no harm in 1.2 though
-package "pkg-config"
-package "libmemcached-dev"
 
-cpan_module "Log::Log4Perl"
-cpan_module "FreezeThaw"
-cpan_module "Cache::Memcached"
-cpan_module "UNIVERSAL::require"
-cpan_module "Unix::Syslog"
-cpan_module "Template"
-cpan_module "Tie::IxHash"
-cpan_module "File::Find::Rule"
-cpan_module "XML::LibXML"
-cpan_module "XML::LibXSLT"
-cpan_module "XML::Simple"
-cpan_module "Net::Jabber"
-cpan_module "Module::Build"
-cpan_module "LWP"
-cpan_module "Test::Pod"
-cpan_module "RPC::XML"
-cpan_module "DateTime"
-
-cpan_module "DateTime::Format::Builder"
-cpan_module "DateTime::Format::ISO8601"
-cpan_module "DateTime::Format::Strptime"
-
-cpan_module "RHANDOM/Net-Server-0.90.tar.gz"
-cpan_module "JSON::XS"
-cpan_module "XML::LibXML"
-cpan_module "XML::LibXSLT"
-cpan_module "Net::Server::PreFork"
-
-cpan_module "TMTM/Class-DBI-0.96.tar.gz" do
-    force "true"
-end
-
-cpan_module "Class::DBI::AbstractSearch"
-cpan_module "Class::DBI::SQLite"
 
 # ========= EJABBERD USERS ==============
 
@@ -138,6 +120,8 @@ end
 
 
 #========= CORE OPENSRF INSTALL ===========
+
+package "subversion"
 
 subversion "OpenSRF" do
   user "opensrf"

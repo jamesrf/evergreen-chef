@@ -4,13 +4,13 @@ set_unless[:opensrf][:localstatedir] = '/openils/var'
 set_unless[:opensrf][:libdir] = '/openils/lib'
 
 
-set_unless[:opensrf][:version] = 'rel_1_4'
+set_unless[:opensrf][:version] = 'rel_1_6'
 
 set_unless[:opensrf][:svnrepo] = "svn://svn.open-ils.org/OpenSRF/branches/#{node[:opensrf][:version]}"
 
 case node[:opensrf][:version]
   when "trunk"
-    set_unless[:opensrf][:svnrepo] = 'svn://svn.open-ils.org/OpenSRF/trunk'
+    set[:opensrf][:svnrepo] = 'svn://svn.open-ils.org/OpenSRF/trunk'
 end
 
 set_unless[:opensrf][:folder] = "/home/opensrf/opensrf_#{node[:opensrf][:version]}"
