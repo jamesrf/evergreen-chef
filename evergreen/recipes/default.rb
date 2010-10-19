@@ -65,6 +65,9 @@ package "python-dev"
 package "python-setuptools"
 package "python-lxml"
 
+# ?
+package "libcache-memcached-perl"
+
 # this needs tweakery into a more full fledged cross-platformyness
 case node[:lsb][:codename]
   when "hardy"
