@@ -91,7 +91,9 @@ package "psmisc"
 package "python-dev"
 package "python-libxml2"
 package "python-setuptools"
-
+package "libdatetime-format-iso8601-perl"
+package "libjson-xs-perl"
+package "libnet-server-perl"
 
 
 # ========= EJABBERD USERS ==============
